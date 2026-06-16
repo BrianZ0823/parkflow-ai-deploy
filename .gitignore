@@ -17,10 +17,6 @@ mvp-app/edge-qa-profile/
 mvp-app/chrome-qa-profile/
 mvp-app/__pycache__/
 
-# Deploy artifacts (generated)
-deploy/frontend-nginx.conf
-deploy/backend-requirements.txt
-
 # OS files
 .DS_Store
 Thumbs.db

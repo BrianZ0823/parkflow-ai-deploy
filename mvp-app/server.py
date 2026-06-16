@@ -6,6 +6,7 @@ assets and calls the configured DashScope-compatible LLM to produce reports.
 """
 from __future__ import annotations
 
+import io
 import json
 import mimetypes
 import os
@@ -785,13 +786,33 @@ def rag_for(task: str, enterprise: dict[str, Any] | None, industry: str) -> list
             }
             for item in results
         ]
+    except (ImportError, ModuleNotFoundError) as exc:
+        return [
+            {
+                "id": "rag_deps_missing",
+                "collection": "rag",
+                "content": "向量知识库依赖未安装（chromadb / openai），已使用结构化企业库、政策库、CRM、产业图谱和风险数据完成本次研判。",
+                "metadata": {"error": str(exc), "reason": "deps_missing"},
+                "unavailable": True,
+            }
+        ]
+    except ValueError as exc:
+        return [
+            {
+                "id": "rag_no_api_key",
+                "collection": "rag",
+                "content": "向量知识库的 Embedding API Key 未配置，已使用结构化企业库、政策库、CRM、产业图谱和风险数据完成本次研判。",
+                "metadata": {"error": str(exc), "reason": "no_api_key"},
+                "unavailable": True,
+            }
+        ]
     except Exception as exc:
         return [
             {
                 "id": "rag_unavailable",
                 "collection": "rag",
-                "content": "向量知识库当前未连接，已使用结构化企业库、政策库、CRM、产业图谱和风险数据完成本次研判。",
-                "metadata": {"error": str(exc)},
+                "content": f"向量知识库暂时不可用（{str(exc)[:120]}），已使用结构化企业库、政策库、CRM、产业图谱和风险数据完成本次研判。",
+                "metadata": {"error": str(exc), "reason": "unknown"},
                 "unavailable": True,
             }
         ]
@@ -881,7 +902,14 @@ def build_sources(context: dict[str, Any]) -> list[dict[str, Any]]:
     rag_results = context.get("rag_results") or []
     if rag_results:
         if all(item.get("unavailable") for item in rag_results):
-            sources.append({"id": "rag", "name": "向量知识库", "status": "unavailable", "detail": "当前运行环境未连接"})
+            reason = (rag_results[0].get("metadata") or {}).get("reason", "")
+            if reason == "deps_missing":
+                detail = "依赖未安装"
+            elif reason == "no_api_key":
+                detail = "Embedding Key 未配置"
+            else:
+                detail = "暂时不可用"
+            sources.append({"id": "rag", "name": "向量知识库", "status": "unavailable", "detail": detail})
         else:
             sources.append({"id": "rag", "name": "向量知识库", "status": "hit", "detail": f"{len(rag_results)} 条片段"})
     return sources
@@ -1155,6 +1183,55 @@ def call_llm(messages: list[dict[str, str]], max_tokens: int = 3600) -> str:
     return data["choices"][0]["message"]["content"].strip()
 
 
+def call_llm_stream(messages: list[dict[str, str]], on_chunk, max_tokens: int = 3600) -> str:
+    api_key = get_api_key()
+    if not api_key:
+        raise RuntimeError("未配置 DASHSCOPE_API_KEY，且 original V0/api_key.txt 不可用")
+    payload = {
+        "model": LLM_MODEL,
+        "messages": messages,
+        "temperature": 0.28,
+        "max_tokens": max_tokens,
+        "stream": True,
+        "stream_options": {"include_usage": True},
+    }
+    req = urllib.request.Request(
+        f"{LLM_API_BASE.rstrip('/')}/chat/completions",
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    chunks: list[str] = []
+    try:
+        with urllib.request.urlopen(req, timeout=LLM_TIMEOUT) as resp:
+            for line_bytes in resp:
+                line = line_bytes.decode("utf-8", errors="replace").strip()
+                if not line or not line.startswith("data:"):
+                    continue
+                data_str = line[len("data:"):].strip()
+                if data_str == "[DONE]":
+                    break
+                try:
+                    event = json.loads(data_str)
+                except json.JSONDecodeError:
+                    continue
+                delta = (event.get("choices") or [{}])[0].get("delta") or {}
+                content = delta.get("content")
+                if content:
+                    chunks.append(content)
+                    on_chunk(content)
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"LLM HTTP {exc.code}: {body[:500]}") from exc
+    except Exception as exc:
+        raise RuntimeError(f"LLM 流式调用失败：{exc}") from exc
+
+    return "".join(chunks).strip()
+
+
 def parse_json_object(text: str) -> dict[str, Any] | None:
     cleaned = text.strip()
     if cleaned.startswith("```"):
@@ -1248,6 +1325,81 @@ def generate_report(context: dict[str, Any]) -> dict[str, Any]:
     return parsed
 
 
+def generate_report_stream(context: dict[str, Any], on_chunk) -> dict[str, Any]:
+    system = (
+        "你是资深产业园区招商顾问。必须只基于提供的本地数据、RAG片段和风险信息生成招商研判。"
+        "不要编造不存在的数据。输出必须是 JSON，不要 Markdown。"
+    )
+    user = {
+        "instruction": (
+            "生成一份可用于招商工作台展示的结构化研判。"
+            "结论要先行，语言克制专业。"
+            "如果 intent 是 industry_recommendation，必须说明当前企业来自候选企业排序，不得偏离 requested_industry。"
+            "如果 intent 是 mission_discovery，必须像招商 Agent 一样先给出候选名单、排序逻辑和下一步核验动作，不要要求用户先提供企业名。"
+            "如果 local_context.requested_count 存在，ranked_companies 必须尽量返回对应数量，不要擅自改成 5 家。"
+            "如果证据不足，要明确写待核验事项。"
+        ),
+        "required_schema": {
+            "verdict": "值得重点推进/谨慎推进/暂不建议推进",
+            "summary": "120字以内核心结论",
+            "confidence": "高/中/低",
+            "metrics": {
+                "match_score": "0-100整数",
+                "risk_level": "低风险/中等风险/高风险",
+                "recommended_action": "下一步动作",
+            },
+            "sections": [
+                {"id": "profile", "title": "企业画像", "body": "段落", "bullets": ["要点"]},
+                {"id": "industry", "title": "产业链位置", "body": "段落", "bullets": ["要点"]},
+                {"id": "policy", "title": "政策抓手", "body": "段落", "bullets": ["要点"]},
+                {"id": "risk", "title": "风险与待核验", "body": "段落", "bullets": ["要点"]},
+                {"id": "action", "title": "推进建议", "body": "段落", "bullets": ["要点"]},
+            ],
+            "policy_matches": ["政策匹配要点"],
+            "action_plan": ["可执行动作"],
+            "ranked_companies": [
+                {
+                    "rank": "序号",
+                    "name": "企业名",
+                    "score": "综合评分",
+                    "reason": "推荐原因",
+                    "next_step": "下一步核验或推进动作",
+                }
+            ],
+            "sources_used": ["引用的 evidence id"],
+        },
+        "local_context": compact_context_for_llm(context),
+        "evidence": context.get("evidence", []),
+    }
+    text = call_llm_stream(
+        [
+            {"role": "system", "content": system},
+            {"role": "user", "content": json.dumps(user, ensure_ascii=False)},
+        ],
+        on_chunk=on_chunk,
+    )
+    parsed = parse_json_object(text)
+    if not parsed:
+        return {
+            "verdict": "模型返回未结构化结果",
+            "summary": "模型返回了真实文本，但未按 JSON 结构输出。以下保留原文用于排查。",
+            "confidence": "低",
+            "metrics": {
+                "match_score": "-",
+                "risk_level": context.get("risk", {}).get("risk_level", "-"),
+                "recommended_action": "重新生成",
+            },
+            "sections": [{"id": "raw", "title": "模型原文", "body": text, "bullets": []}],
+            "policy_matches": [],
+            "action_plan": [],
+            "ranked_companies": ranked_companies_for_ui(context),
+            "sources_used": [item["id"] for item in context.get("evidence", [])],
+        }
+    if context.get("candidate_enterprises"):
+        parsed["ranked_companies"] = ranked_companies_for_ui(context)
+    return parsed
+
+
 def generate_material(material_type: str, report: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
     label = MATERIAL_LABELS.get(material_type, material_type or "招商材料")
     system = (
@@ -1277,6 +1429,149 @@ def generate_material(material_type: str, report: dict[str, Any], context: dict[
     if not parsed:
         return {"title": label, "audience": "未解析", "content": [text], "source_notes": ["真实 LLM 输出，未结构化解析"]}
     return parsed
+
+
+def _safe_text(value: Any) -> str:
+    if value is None:
+        return ""
+    return str(value)
+
+
+def build_report_docx(report: dict[str, Any], context: dict[str, Any]) -> bytes:
+    from docx import Document
+    from docx.shared import Pt, Inches, Cm
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+    doc = Document()
+    style = doc.styles["Normal"]
+    font = style.font
+    font.name = "Microsoft YaHei"
+    font.size = Pt(11)
+
+    title = doc.add_heading("企业招商研判报告", level=0)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    verdict_map = {"值得重点推进": "值得重点推进", "谨慎推进": "谨慎推进", "暂不建议推进": "暂不建议推进"}
+    verdict = verdict_map.get(_safe_text(report.get("verdict")), _safe_text(report.get("verdict")))
+    doc.add_paragraph(f"核心判断：{verdict}", style="Intense Quote")
+    doc.add_paragraph(_safe_text(report.get("summary")))
+
+    metrics = report.get("metrics") or {}
+    doc.add_heading("关键指标", level=2)
+    table = doc.add_table(rows=2, cols=3)
+    table.style = "Light Grid Accent 1"
+    cells = table.rows[0].cells
+    cells[0].text = "匹配度"
+    cells[1].text = "风险等级"
+    cells[2].text = "建议动作"
+    cells = table.rows[1].cells
+    cells[0].text = str(metrics.get("match_score", "-"))
+    cells[1].text = _safe_text(metrics.get("risk_level", "-"))
+    cells[2].text = _safe_text(metrics.get("recommended_action", "-"))
+
+    sections = report.get("sections") or []
+    for section in sections:
+        if not isinstance(section, dict):
+            continue
+        sec_title = _safe_text(section.get("title"))
+        if not sec_title:
+            continue
+        doc.add_heading(sec_title, level=2)
+        body = _safe_text(section.get("body"))
+        if body:
+            doc.add_paragraph(body)
+        bullets = section.get("bullets") or []
+        for bullet in bullets:
+            doc.add_paragraph(_safe_text(bullet), style="List Bullet")
+
+    ranked = report.get("ranked_companies") or context.get("candidate_enterprises") or []
+    if ranked:
+        doc.add_heading("候选企业排名", level=2)
+        headers = ["排名", "企业名称", "匹配分", "推荐理由", "下一步"]
+        row_count = min(len(ranked), 8) + 1
+        cols = len(headers)
+        table = doc.add_table(rows=row_count, cols=cols)
+        table.style = "Light Grid Accent 1"
+        for idx, header in enumerate(headers):
+            table.rows[0].cells[idx].text = header
+        for row_idx, company in enumerate(ranked[:8]):
+            if not isinstance(company, dict):
+                continue
+            cells = table.rows[row_idx + 1].cells
+            cells[0].text = str(row_idx + 1)
+            cells[1].text = _safe_text(company.get("name"))
+            cells[2].text = str(company.get("score", "-"))
+            cells[3].text = _safe_text(company.get("reason", ""))[:80]
+            cells[4].text = _safe_text(company.get("next_step", ""))[:60]
+
+    policy_matches = report.get("policy_matches") or []
+    if policy_matches:
+        doc.add_heading("政策匹配", level=2)
+        for policy in policy_matches:
+            doc.add_paragraph(_safe_text(policy), style="List Bullet")
+
+    action_plan = report.get("action_plan") or []
+    if action_plan:
+        doc.add_heading("推进计划", level=2)
+        for idx, action in enumerate(action_plan, 1):
+            doc.add_paragraph(f"{idx}. {_safe_text(action)}")
+
+    evidence = context.get("evidence") or []
+    if evidence:
+        doc.add_heading("数据来源", level=2)
+        for item in evidence[:8]:
+            if not isinstance(item, dict):
+                continue
+            src_label = f"{_safe_text(item.get('title'))} ({_safe_text(item.get('source'))})"
+            doc.add_paragraph(src_label, style="List Bullet")
+
+    doc.add_paragraph("")
+    doc.add_paragraph("由 ParkFlow AI 生成，仅供参考，不作为唯一决策依据。").italic = True
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
+
+
+def build_material_docx(material: dict[str, Any], material_type: str) -> bytes:
+    from docx import Document
+    from docx.shared import Pt
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+    doc = Document()
+    style = doc.styles["Normal"]
+    font = style.font
+    font.name = "Microsoft YaHei"
+    font.size = Pt(11)
+
+    label = MATERIAL_LABELS.get(material_type, material_type or "招商材料")
+    title = _safe_text(material.get("title")) or label
+    doc_heading = doc.add_heading(title, level=0)
+    doc_heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    audience = _safe_text(material.get("audience"))
+    if audience:
+        doc.add_paragraph(f"对象：{audience}")
+
+    content = material.get("content") or []
+    if isinstance(content, list):
+        for para in content:
+            doc.add_paragraph(_safe_text(para))
+    else:
+        doc.add_paragraph(_safe_text(content))
+
+    source_notes = material.get("source_notes") or []
+    if source_notes:
+        doc.add_heading("依据", level=2)
+        for note in source_notes:
+            doc.add_paragraph(_safe_text(note), style="List Bullet")
+
+    doc.add_paragraph("")
+    doc.add_paragraph("由 ParkFlow AI 生成，可直接用于招商工作。").italic = True
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -1492,7 +1787,16 @@ class Handler(BaseHTTPRequestHandler):
         )
         self.send_stream_event({"event": "stage", "id": "llm", "label": "形成招商建议", "status": "active", "detail": "整理推荐企业、推荐理由和下一步推进动作"})
         try:
-            report = generate_report(context)
+            def stream_chunk(content: str) -> None:
+                self.send_stream_event(
+                    {
+                        "event": "chunk",
+                        "content": content,
+                        "elapsed_ms": int((time.time() - started) * 1000),
+                    }
+                )
+
+            report = generate_report_stream(context, on_chunk=stream_chunk)
             self.send_stream_event(
                 {
                     "event": "report",
@@ -1644,6 +1948,54 @@ class Handler(BaseHTTPRequestHandler):
             )
             return
 
+        if self.path == "/api/export/report":
+            body = self.read_body()
+            report = body.get("report") or {}
+            context = body.get("context") or {}
+            if not report:
+                self.send_json({"ok": False, "error": "缺少报告数据"}, 400)
+                return
+            try:
+                docx_bytes = build_report_docx(report, context)
+            except Exception as exc:
+                self.send_json({"ok": False, "error": f"报告导出失败：{exc}"}, 500)
+                return
+            company = _safe_text(context.get("company_name") or report.get("company_name", ""))
+            filename = urllib.parse.quote(f"招商研判报告_{company}.docx") if company else "招商研判报告.docx"
+            self.send_response(200)
+            self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+            self.send_header("Content-Disposition", f"attachment; filename*=UTF-8''{filename}")
+            self.send_header("Content-Length", str(len(docx_bytes)))
+            self.send_header("Cache-Control", "no-store")
+            self.send_cors_headers()
+            self.end_headers()
+            self.wfile.write(docx_bytes)
+            return
+
+        if self.path == "/api/export/material":
+            body = self.read_body()
+            material = body.get("material") or {}
+            material_type = str(body.get("type") or "outline").strip()
+            if not material:
+                self.send_json({"ok": False, "error": "缺少材料数据"}, 400)
+                return
+            try:
+                docx_bytes = build_material_docx(material, material_type)
+            except Exception as exc:
+                self.send_json({"ok": False, "error": f"材料导出失败：{exc}"}, 500)
+                return
+            label = MATERIAL_LABELS.get(material_type, material_type or "招商材料")
+            filename = urllib.parse.quote(f"{label}.docx")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+            self.send_header("Content-Disposition", f"attachment; filename*=UTF-8''{filename}")
+            self.send_header("Content-Length", str(len(docx_bytes)))
+            self.send_header("Cache-Control", "no-store")
+            self.send_cors_headers()
+            self.end_headers()
+            self.wfile.write(docx_bytes)
+            return
+
         self.send_json({"ok": False, "error": "未知接口"}, 404)
 
     def serve_static(self) -> None:
@@ -1666,12 +2018,26 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(content)
 
 
+def _rag_startup_check() -> str:
+    """Quick RAG health check at startup so operators can see status in console."""
+    try:
+        results = rag_for("health check", None, "")
+        if results and not results[0].get("unavailable"):
+            return f"OK ({len(results)} 条片段)"
+        reason = (results[0].get("metadata") or {}).get("reason", "unknown") if results else "empty"
+        error = (results[0].get("metadata") or {}).get("error", "")[:80] if results else ""
+        return f"不可用 (reason={reason}, {error})"
+    except Exception as exc:
+        return f"异常 ({exc})"
+
+
 def main() -> None:
     port = int(os.getenv("MVP_PORT", "8765"))
     host = os.getenv("MVP_HOST", "127.0.0.1")
-    server = ThreadingHTTPServer((host, port), Handler)
     print(f"ParkFlow AI MVP running at http://{host}:{port}")
     print(f"Reading original V0 data from: {ORIGINAL_DIR}")
+    rag_status = _rag_startup_check()
+    print(f"RAG / ChromaDB: {rag_status}")
     print("Press Ctrl+C to stop.")
     try:
         server.serve_forever()

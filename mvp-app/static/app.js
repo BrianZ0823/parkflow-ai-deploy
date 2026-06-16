@@ -12,6 +12,24 @@ function apiUrl(path) {
   return `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
+async function downloadFile(url, body, filename) {
+  const resp = await fetch(apiUrl(url), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ error: `HTTP ${resp.status}` }));
+    throw new Error(err.error || `导出失败 (${resp.status})`);
+  }
+  const blob = await resp.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 const ui = {
   homeView: $("#homeView"),
   agentWorkspace: $("#agentWorkspace"),
@@ -61,6 +79,7 @@ const state = {
   shortlist: [],
   history: [],
   currentAgentMessage: null,
+  lastMaterial: null,
   activityItems: [],
   streamingText: "",
   liveTimer: null,
@@ -1899,6 +1918,7 @@ function shortlistComparisonArtifact() {
         <div class="artifact-toolbar">
           <button class="artifact-action primary" type="button" data-prompt="基于这次对比，生成两家企业的拜访提纲。">生成拜访提纲</button>
           <button class="artifact-action" type="button" data-prompt="把这次企业对比整理成领导汇报摘要。">生成汇报摘要</button>
+          <button class="artifact-action" type="button" data-export-report="">下载 Word</button>
         </div>
       </div>
       <div class="artifact-body compare-body">
@@ -2116,6 +2136,7 @@ function recommendationArtifact() {
         <div class="artifact-toolbar">
           <button class="artifact-action primary" type="button" data-material="outline">生成拜访提纲</button>
           <button class="artifact-action" type="button" data-prompt="请展开说明这次推荐的筛选逻辑。">查看筛选逻辑</button>
+          <button class="artifact-action" type="button" data-export-report="">下载 Word</button>
         </div>
       </div>
       <div class="artifact-body">
@@ -2305,6 +2326,44 @@ function bindArtifactActions(root) {
       ui.input.focus();
     });
   });
+  root.querySelectorAll("[data-export-report]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!state.report) return;
+      button.disabled = true;
+      button.textContent = "导出中...";
+      try {
+        const companyName = (state.candidates[0]?.name || "企业").replace(/[\\/:*?"<>|]/g, "");
+        await downloadFile("/api/export/report", {
+          report: state.report,
+          context: state.context || {},
+        }, `招商研判报告_${companyName}.docx`);
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        button.disabled = false;
+        button.textContent = "下载 Word";
+      }
+    });
+  });
+  root.querySelectorAll("[data-export-material]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!state.lastMaterial) return;
+      button.disabled = true;
+      button.textContent = "导出中...";
+      try {
+        const title = (state.lastMaterial.title || "招商材料").replace(/[\\/:*?"<>|]/g, "");
+        await downloadFile("/api/export/material", {
+          material: state.lastMaterial,
+          type: state.lastMaterial.type || "outline",
+        }, `${title}.docx`);
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        button.disabled = false;
+        button.textContent = "下载 Word";
+      }
+    });
+  });
 }
 
 async function generateMaterial(type, taskOverride = "", options = {}) {
@@ -2337,6 +2396,7 @@ async function generateMaterial(type, taskOverride = "", options = {}) {
       signal: state.currentAbort.signal,
     });
     const material = data.material || {};
+    state.lastMaterial = material;
     const content = Array.isArray(material.content) ? material.content : [material.content || ""];
     finishActivities();
     renderAgentText(`已生成：${material.title || "招商材料"}。`);
@@ -2352,6 +2412,7 @@ async function generateMaterial(type, taskOverride = "", options = {}) {
           <div class="artifact-toolbar">
             <button class="artifact-action" type="button" data-prompt="基于这份材料，帮我再压缩成领导汇报摘要。">生成汇报摘要</button>
             <button class="artifact-action" type="button" data-prompt="把这份材料改成更适合微信沟通的语气。">改成微信话术</button>
+            <button class="artifact-action" type="button" data-export-material="">下载 Word</button>
           </div>
         </div>
         <div class="artifact-body">
@@ -2436,15 +2497,18 @@ async function analyzeWithStream(task, signal) {
         stopLiveProgress(false);
         setLiveStatus("正在整理回复");
         state.streamingText += event.content || "";
+        renderAgentText(state.streamingText);
       }
       if (event.event === "message") {
         stopLiveProgress(false);
+        state.streamingText = "";
         lastPayload = event;
-        renderPlainAnswer(event.content || state.streamingText);
+        renderPlainAnswer(event.content || "");
       }
       if (event.event === "context") {
         stopLiveProgress(false);
         setLiveStatus("正在整理结果");
+        state.streamingText = "";
         lastPayload = event;
         state.sources = event["evi" + "dence"] || [];
         state.candidates = getCandidates(event);
@@ -2456,6 +2520,7 @@ async function analyzeWithStream(task, signal) {
         renderStats(event.stats || {});
       }
       if (event.event === "report") {
+        state.streamingText = "";
         lastPayload = event;
         renderReport(event);
       }
