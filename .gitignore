@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Environment
+.env
+.env.local
+
+# Server logs
+*.log
+
+# Browser profiles (Crashpad / temp files)
+chrome-profile/
+edge-profile/
+mvp-app/tmp-browser/
+mvp-app/edge-qa-profile/
+mvp-app/chrome-qa-profile/
+mvp-app/__pycache__/
+
+# Deploy artifacts (generated)
+deploy/frontend-nginx.conf
+deploy/backend-requirements.txt
+
+# OS files
+.DS_Store
+Thumbs.db

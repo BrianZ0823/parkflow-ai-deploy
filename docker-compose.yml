@@ -1,0 +1,28 @@
+services:
+  parkflow-backend:
+    build:
+      context: ..
+      dockerfile: MVP DEMO/deploy/backend.Dockerfile
+    environment:
+      MVP_HOST: 0.0.0.0
+      MVP_PORT: 8765
+      PARKFLOW_ORIGINAL_DIR: /app/original V0
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY}
+      DASHSCOPE_API_BASE: ${DASHSCOPE_API_BASE:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      DASHSCOPE_MODEL: ${DASHSCOPE_MODEL:-qwen-plus}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8080}
+    ports:
+      - "${BACKEND_PORT:-8765}:8765"
+    restart: unless-stopped
+
+  parkflow-frontend:
+    build:
+      context: .
+      dockerfile: deploy/frontend.Dockerfile
+    environment:
+      PARKFLOW_API_BASE: ${PARKFLOW_API_BASE:-http://localhost:8765}
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      - parkflow-backend
+    restart: unless-stopped

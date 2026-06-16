@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ParkFlow Deal Intelligence</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23172033'/%3E%3Cpath d='M32 12 50 22v20L32 52 14 42V22l18-10Z' fill='none' stroke='%23fff' stroke-width='4'/%3E%3Cpath d='M24 27l8-5 8 5M24 37l8 5 8-5M32 22v20' fill='none' stroke='%239bd8d0' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body data-agent-state="idle" data-view="home">
+    <main class="app-shell">
+      <header class="topbar">
+        <button class="brand brand-button" type="button" id="brandHomeButton" aria-label="返回首页">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3.2 19.2 7.35v8.3L12 19.8 4.8 15.65v-8.3L12 3.2Z" />
+              <path d="M8.45 9.7 12 7.7l3.55 2M8.45 14.3l3.55 2 3.55-2M12 7.7v8.6" />
+            </svg>
+          </div>
+          <div>
+            <strong>ParkFlow</strong>
+            <span>Deal Intelligence</span>
+          </div>
+        </button>
+
+        <div class="project-meta">
+          <span id="currentProject">当前任务：待开始</span>
+          <span id="corpusDetail">正在连接本地资料</span>
+          <i aria-hidden="true"></i>
+          <strong id="health">连接中</strong>
+          <em id="agentStatus">待命</em>
+          <button class="ghost-button" type="button" id="historyButton">历史</button>
+          <button class="new-thread-button" type="button" id="newThreadButton">新任务</button>
+        </div>
+      </header>
+
+      <section class="home-view" id="homeView">
+        <div class="home-inner">
+          <section class="home-hero" aria-label="开始招商任务">
+            <span>招商 Agent Workspace</span>
+            <h1>把招商目标交给 ParkFlow，它会沉淀为可继续推进的工作线程。</h1>
+            <p>筛选企业、解释推荐理由、匹配政策机会、生成拜访材料，都在同一个线程里持续完成。</p>
+            <form class="home-command" id="homeForm" autocomplete="off">
+              <textarea id="homeInput" rows="2" spellcheck="false" placeholder="输入招商目标，例如：帮我找 8 家适合重点推进的芯片企业，并说明推荐理由"></textarea>
+              <button type="submit">开始</button>
+            </form>
+          </section>
+
+          <section class="home-section">
+            <div class="home-section-title">
+              <span>快捷开始</span>
+            </div>
+            <div class="home-starter-grid">
+              <button type="button" data-home-prompt="找出适合重点推进的 8 家企业，并说明推荐理由、风险提示和下一步推进建议。">
+                <strong>筛选重点企业</strong>
+                <span>形成可追问、可加入清单的候选企业建议。</span>
+              </button>
+              <button type="button" data-home-prompt="帮我匹配 5 家生物医药方向企业，并输出推荐理由和拜访前需要核验的问题。">
+                <strong>匹配产业方向</strong>
+                <span>围绕指定赛道发现企业线索。</span>
+              </button>
+              <button type="button" data-home-prompt="分析未来芯片科技是否值得重点推进，并生成拜访提纲。">
+                <strong>分析单家企业</strong>
+                <span>沉淀企业画像、风险和材料。</span>
+              </button>
+              <button type="button" data-home-prompt="基于当前园区政策，生成一份适合招商首次触达的邀约话术。">
+                <strong>生成招商材料</strong>
+                <span>把判断转成可直接使用的沟通文本。</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="home-section">
+            <div class="home-section-title">
+              <span>最近任务</span>
+              <button type="button" id="openHistoryFromHome">查看全部</button>
+            </div>
+            <div class="recent-thread-list" id="recentThreads">
+              <article class="empty-recent">
+                <strong>还没有保存的招商线程</strong>
+                <p>开始一个目标后，线程会自动保存，刷新页面也可以继续追问。</p>
+              </article>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="agent-workspace" id="agentWorkspace" hidden>
+        <section class="main-thread" aria-label="招商 Agent 线程">
+          <div class="thread-scroll" id="threadScroll">
+            <div class="message-list" id="messageList"></div>
+          </div>
+
+          <form id="analysisForm" class="command-bar" autocomplete="off">
+            <div class="command-chips" id="commandChips">
+              <button type="button" data-prompt="请展开说明这次推荐的筛选逻辑。">查看筛选逻辑</button>
+              <button type="button" data-prompt="为什么推荐第 1 家？展开说明推荐理由。">解释第 1 家</button>
+              <button type="button" data-prompt="排除高风险企业，并收紧筛选条件重新推荐。">收紧筛选条件</button>
+              <button type="button" data-prompt="帮我生成当前企业的拜访提纲。">生成拜访提纲</button>
+              <button type="button" data-prompt="把当前推荐整理成领导汇报摘要。">导出推荐摘要</button>
+            </div>
+            <div class="command-input">
+              <textarea
+                id="taskInput"
+                spellcheck="false"
+                rows="1"
+                placeholder="继续追问：为什么推荐第 1 家？帮我生成拜访提纲？排除高风险企业？"
+              ></textarea>
+              <button type="button" class="voice-button" id="voiceInputButton" aria-label="语音输入" title="语音输入">
+                <span>语音</span>
+              </button>
+              <button type="submit" class="submit-button" aria-label="发送">
+                <span>发送</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h12M13 7l5 5-5 5" /></svg>
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <aside class="insight-panel" aria-label="当前线程判断依据">
+          <section class="insight-section">
+            <div class="section-title"><span>目标理解</span></div>
+            <p id="goalUnderstanding">等待你交办招商目标。</p>
+          </section>
+
+          <section class="insight-section">
+            <div class="section-title"><span>判断依据</span></div>
+            <div class="source-list" id="sourceList">
+              <p class="muted">形成建议后，这里会说明推荐理由、关键事实、待核验事项和下一步动作。</p>
+            </div>
+          </section>
+
+          <section class="insight-section">
+            <div class="section-title"><span>筛选逻辑</span></div>
+            <div class="criteria-list" id="criteriaList">
+              <span>产业匹配</span>
+              <span>承载能力</span>
+              <span>成长潜力</span>
+              <span>风险可控</span>
+            </div>
+          </section>
+
+          <section class="insight-section">
+            <div class="section-title"><span>当前关注</span></div>
+            <div class="active-company" id="activeCompany">
+              <p class="muted">点击企业卡片后，这里会同步企业画像、风险和推进动作。</p>
+            </div>
+          </section>
+
+          <section class="insight-section">
+            <div class="section-title"><span>风险与待确认</span></div>
+            <div class="risk-list" id="riskList">
+              <p class="muted">完成分析后，会列出需要复核的事项。</p>
+            </div>
+          </section>
+
+          <section class="insight-section">
+            <div class="section-title"><span>下一步动作</span></div>
+            <div class="next-actions" id="nextActions">
+              <p class="muted">形成推荐后，可以继续生成材料或调整条件。</p>
+            </div>
+          </section>
+        </aside>
+      </section>
+
+      <dialog class="source-dialog" id="sourceDialog">
+        <button type="button" class="dialog-close" id="dialogClose" aria-label="关闭">×</button>
+        <span id="dialogType">判断依据</span>
+        <h2 id="dialogTitle">推荐依据</h2>
+        <dl>
+          <dt>关键事实</dt>
+          <dd id="dialogSource"></dd>
+          <dt>支持判断</dt>
+          <dd id="dialogSnippet"></dd>
+          <dt>仍需核验</dt>
+          <dd id="dialogReason"></dd>
+          <dt>影响动作</dt>
+          <dd id="dialogRelation"></dd>
+        </dl>
+      </dialog>
+
+      <div class="drawer-overlay" id="drawerOverlay" hidden></div>
+      <aside class="history-drawer" id="historyDrawer" aria-label="历史招商线程" hidden>
+        <header>
+          <div>
+            <span>历史任务</span>
+            <strong>招商线程</strong>
+          </div>
+          <button type="button" id="historyClose" aria-label="关闭历史">×</button>
+        </header>
+        <div class="history-list" id="historyList"></div>
+      </aside>
+    </main>
+
+    <script src="./config.js"></script>
+    <script src="./app.js?v=20260615-message-actions"></script>
+  </body>
+</html>

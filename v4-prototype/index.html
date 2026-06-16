@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI招商智能体 V4 原型</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero" id="desk">
+        <header class="topline">
+          <div class="brand">
+            <span class="brand-seal">AI</span>
+            <div>
+              <strong>AI招商智能体</strong>
+              <span>古典简约 · 招商研判工作台</span>
+            </div>
+          </div>
+          <nav class="stage-nav" aria-label="演示阶段">
+            <button class="stage-link active" data-target="desk">立项</button>
+            <button class="stage-link" data-target="trace">痕迹</button>
+            <button class="stage-link" data-target="brief">研判</button>
+            <button class="stage-link" data-target="action">材料</button>
+            <button class="stage-link" data-target="value">价值</button>
+          </nav>
+        </header>
+
+        <div class="ambient-grid" aria-hidden="true"></div>
+        <div class="desk-layout">
+          <div class="desk-copy">
+            <p class="kicker">Natural Language Deal Desk</p>
+            <h1>一句招商任务，生成一份可追溯的招商研判。</h1>
+            <p class="lede">
+              不再让招商人员自己翻企业库、政策库、CRM 和产业图谱。AI 自动找到关键事实，形成判断，并继续生成拜访材料。
+            </p>
+            <div class="ai-signals" aria-label="AI Native 能力">
+              <span>Context-aware</span>
+              <span>Source-grounded</span>
+              <span>Artifact-ready</span>
+            </div>
+            <div class="agent-brief" aria-label="AI 任务理解">
+              <span>AI 已理解</span>
+              <strong>目标企业研判 / 政策抓手 / 拜访材料</strong>
+              <em>从一句话进入完整招商动作</em>
+            </div>
+          </div>
+
+          <form class="prompt-card" id="taskForm">
+            <label for="taskInput">把要完成的招商工作告诉 AI</label>
+            <textarea id="taskInput">分析未来芯片科技是否值得重点招商；如果值得，生成今天下午拜访用的提纲和微信跟进话术。</textarea>
+            <div class="runtime-strip" aria-label="Agent 执行循环">
+              <span>Agent loop</span>
+              <b>Plan</b>
+              <i></i>
+              <b>Retrieve</b>
+              <i></i>
+              <b>Reason</b>
+              <i></i>
+              <b>Artifact</b>
+            </div>
+            <div class="intent-preview">
+              <small>预计输出</small>
+              <p>可追溯招商研判、政策匹配依据、拜访提纲、微信跟进话术。</p>
+            </div>
+            <div class="prompt-actions">
+              <div class="chips">
+                <button type="button" data-prompt="研判一家企业，并给出下一步推进建议">研判一家企业</button>
+                <button type="button" data-prompt="找出本周最值得推进的企业，并说明原因">找本周优先企业</button>
+                <button type="button" data-prompt="匹配适合目标企业的政策抓手">匹配政策抓手</button>
+              </div>
+              <button class="primary" type="submit">开始研判</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="panel-band trace-band" id="trace">
+        <div class="section-heading">
+          <p class="kicker">AI Work Trace</p>
+          <h2>不是加载中，而是在做招商研判。</h2>
+          <p>把 AI 的检索、分析、判断过程做成可信工作痕迹，证明结果来自真实链路。</p>
+        </div>
+
+        <div class="trace-card">
+          <div class="task-row">
+            <span>当前任务</span>
+            <strong id="currentTask">未来芯片科技招商研判 + 拜访材料生成</strong>
+            <em id="traceStatus">等待执行</em>
+          </div>
+          <div class="agent-context">
+            <span>Agent 正在使用</span>
+            <b>企业库</b>
+            <b>CRM</b>
+            <b>政策库</b>
+            <b>产业图谱</b>
+            <b>知识库</b>
+          </div>
+          <div class="agent-runline" aria-label="Agent 运行态">
+            <span class="run-dot"></span>
+            <strong>正在把招商意图拆成可执行子任务</strong>
+            <em>plan → tool calls → grounded reasoning → artifact</em>
+          </div>
+          <ol class="trace-list" id="traceList">
+            <li><span></span><strong>识别任务</strong><p>企业招商研判 + 沟通材料生成</p></li>
+            <li><span></span><strong>命中企业</strong><p>企业库命中：未来芯片科技有限公司</p></li>
+            <li><span></span><strong>读取上下文</strong><p>CRM、风险评分、政策库、产业图谱、知识库</p></li>
+            <li><span></span><strong>形成判断</strong><p>补链价值高，风险可控，建议重点推进</p></li>
+            <li><span></span><strong>生成交付</strong><p>研判报告、拜访提纲、微信话术</p></li>
+          </ol>
+          <div class="source-note">
+            <strong>真实链路</strong>
+            <span>前端调用后端 Agent，后端读取本地数据并调用真实大模型生成结果；不使用前端硬编码结论。</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel-band brief-band" id="brief">
+        <div class="section-heading">
+          <p class="kicker">Decision Brief</p>
+          <h2>答案优先，但具备咨询报告质感。</h2>
+          <p>结果不是聊天记录，而是一份可交付的招商研判报告。</p>
+        </div>
+
+        <div class="brief-layout">
+          <aside class="brief-nav">
+            <strong>报告结构</strong>
+            <button class="active">一、核心判断</button>
+            <button>二、企业画像</button>
+            <button>三、产业链位置</button>
+            <button>四、政策匹配</button>
+            <button>五、风险与待确认</button>
+            <button>六、行动建议</button>
+          </aside>
+
+          <article class="brief-main">
+            <p class="kicker">核心判断</p>
+            <h3>值得重点推进</h3>
+            <p>
+              未来芯片科技可作为本周重点招商对象。其 AI 推理芯片方向能补强园区半导体与人工智能交叉链条，
+              且可匹配高企免租、AI 产业扶持与算力资源政策。
+            </p>
+            <div class="answer-sources">
+              <span>来源</span>
+              <button>企业库 ENT001</button>
+              <button>CRM CRM001</button>
+              <button>政策 POL002</button>
+              <button>产业图谱</button>
+            </div>
+            <div class="verdict-grid">
+              <div><span>匹配度</span><strong>86/100</strong></div>
+              <div><span>风险等级</span><strong class="good">低风险</strong></div>
+              <div><span>推荐动作</span><strong>安排拜访</strong></div>
+            </div>
+          </article>
+
+          <aside class="evidence">
+            <strong>证据来源</strong>
+            <div><b>企业库</b><span>融资、规模、专利、行业</span></div>
+            <div><b>CRM</b><span>历史沟通与关注点</span></div>
+            <div><b>政策库</b><span>高企免租 / AI 扶持</span></div>
+            <div><b>产业图谱</b><span>补链缺口与机会</span></div>
+            <div><b>知识库</b><span>入驻材料与案例</span></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="panel-band action-band" id="action">
+        <div class="section-heading">
+          <p class="kicker">Action Pack</p>
+          <h2>从判断直接进入招商动作。</h2>
+          <p>每个研判结果都能继续生成可用材料，而不是停留在分析文本。</p>
+        </div>
+
+        <div class="action-layout">
+          <article class="recommendation">
+            <span>当前研判</span>
+            <h3>建议今天下午安排一次技术负责人拜访。</h3>
+            <p>沟通主线：AI 推理芯片补链价值 + 高企免租政策 + 算力资源支持。</p>
+          </article>
+
+          <article class="command-layer">
+            <strong>继续生成什么？</strong>
+            <div class="command-input">生成 20 分钟拜访提纲</div>
+            <button data-material="outline">企业拜访提纲 <span>面向技术负责人</span></button>
+            <button data-material="wechat">微信跟进话术 <span>面向张总</span></button>
+            <button data-material="report">领导汇报材料 <span>保留结论和来源</span></button>
+            <button data-material="risk">风险复核清单 <span>列出待人工确认项</span></button>
+          </article>
+
+          <article class="material-pack">
+            <strong>Artifact 材料包</strong>
+            <div id="materialOutput">
+              <h4>《企业拜访提纲》</h4>
+              <p>1. 确认 AI 推理芯片产品量产进度。</p>
+              <p>2. 介绍园区高企免租与 AI 产业扶持政策。</p>
+              <p>3. 对接算力资源、办公空间和研发配套。</p>
+            </div>
+            <button class="secondary">一键导出</button>
+          </article>
+        </div>
+      </section>
+
+      <section class="value" id="value">
+        <p class="kicker">Leadership Value</p>
+        <h2>5 分钟让人觉得值得继续投入。</h2>
+        <div class="value-story">
+          <strong>以前招商经理需要查企业、翻政策、问产业链、写材料。</strong>
+          <span>现在只要一句自然语言，AI 在 2-3 分钟内给出可追溯研判和可直接使用的招商材料。</span>
+        </div>
+        <div class="value-grid">
+          <div><strong>实用性</strong><p>企业研判、政策匹配、产业机会、材料生成形成闭环。</p></div>
+          <div><strong>功能性</strong><p>自然语言入口、真实后端链路、来源引用、上下文命令层。</p></div>
+          <div><strong>展示性</strong><p>5 分钟可演示：输入任务、AI执行、输出报告、生成材料。</p></div>
+        </div>
+        <div class="final-call">最终建议：采用 V4，以招商答案引擎为主体验，叠加 AI 工作痕迹、研判详页和材料包。</div>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
