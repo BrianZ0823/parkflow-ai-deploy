@@ -616,8 +616,12 @@ def industry_candidates(task: str) -> tuple[str, list[dict[str, Any]]]:
 
 
 def infer_company_name(task: str, explicit: str | None = None) -> str | None:
+    _PLACEHOLDER_RE = re.compile(r"[【〔﹝［<][^】〕﹞］>]{1,30}[】〕﹞］>]")
     if explicit:
-        return explicit.strip()
+        explicit = explicit.strip()
+        if _PLACEHOLDER_RE.search(explicit):
+            return None
+        return explicit
     task = task or ""
     for company in all_enterprises():
         name = str(company.get("name") or "")
@@ -628,7 +632,10 @@ def infer_company_name(task: str, explicit: str | None = None) -> str | None:
             return name
     match = re.search(r"分析(.+?)(?:是否|值不值得|适不适合|能否|并|，|。|$)", task)
     if match:
-        return match.group(1).strip("“”\"' ")
+        name = match.group(1).strip("“”\"' ")
+        if _PLACEHOLDER_RE.search(name):
+            return None
+        return name
     return None
 
 
@@ -818,11 +825,25 @@ def rag_for(task: str, enterprise: dict[str, Any] | None, industry: str) -> list
         ]
 
 
+_PLACEHOLDER_PATTERN = re.compile(r"[【〔﹝［<][^】〕﹞］>]{1,30}[】〕﹞］>]")
+
+def _has_placeholder(task: str) -> bool:
+    return bool(_PLACEHOLDER_PATTERN.search(task or ""))
+
+
 def collect_context(task: str, company_name: str | None = None) -> dict[str, Any]:
     intent = detect_intent(task)
     requested_industry = ""
     target_count = requested_count(task)
     candidates: list[dict[str, Any]] = []
+
+    if _has_placeholder(task):
+        return {
+            "ok": False,
+            "intent": intent,
+            "error": "检测到未填写的待补充内容（如【企业名称】），请先将【……】替换为具体信息后再开始分析。",
+            "sources": [],
+        }
 
     if intent in ("industry_recommendation", "mission_discovery"):
         requested_industry, candidates = mission_candidates(task, target_count)
@@ -835,6 +856,13 @@ def collect_context(task: str, company_name: str | None = None) -> dict[str, Any
         else:
             enterprise = find_enterprise(explicit, task)
         if not enterprise:
+            if _has_placeholder(task):
+                return {
+                    "ok": False,
+                    "intent": intent,
+                    "error": "检测到未填写的待补充内容（如【企业名称】），请先将【……】替换为具体信息后再开始分析。",
+                    "sources": [],
+                }
             requested_industry, candidates = mission_candidates(task, target_count)
             enterprise = candidates[0] if candidates else None
 
@@ -1442,10 +1470,10 @@ def _setup_doc_style(doc: Any, normal_font: str = "仿宋", normal_size: int = 1
     from docx.oxml.ns import qn
 
     for section in doc.sections:
-        section.top_margin = Cm(3.7)
-        section.bottom_margin = Cm(3.5)
+        section.top_margin = Cm(2.8)
+        section.bottom_margin = Cm(2.5)
         section.left_margin = Cm(2.8)
-        section.right_margin = Cm(2.6)
+        section.right_margin = Cm(2.5)
 
     style = doc.styles["Normal"]
     style.font.name = normal_font
@@ -1469,7 +1497,7 @@ def _add_doc_title(doc: Any, text: str) -> Any:
     pf = p.paragraph_format
     pf.line_spacing = Pt(36)
     pf.space_before = Pt(0)
-    pf.space_after = Pt(10)
+    pf.space_after = Pt(12)
     pf.first_line_indent = Pt(0)
     run = p.add_run(text)
     run.font.name = "宋体"
@@ -1486,8 +1514,8 @@ def _add_doc_heading(doc: Any, text: str, font_name: str = "黑体", size: int =
     p = doc.add_paragraph()
     pf = p.paragraph_format
     pf.line_spacing = Pt(28)
-    pf.space_before = Pt(6)
-    pf.space_after = Pt(3)
+    pf.space_before = Pt(8)
+    pf.space_after = Pt(4)
     pf.first_line_indent = Pt(0)
     run = p.add_run(text)
     run.font.name = font_name
@@ -1495,6 +1523,10 @@ def _add_doc_heading(doc: Any, text: str, font_name: str = "黑体", size: int =
     run.bold = True
     run.element.rPr.rFonts.set(qn("w:eastAsia"), font_name)
     return p
+
+
+def _add_doc_subheading(doc: Any, text: str) -> Any:
+    return _add_doc_heading(doc, text, font_name="楷体", size=15)
 
 
 def _add_doc_body(doc: Any, text: str, indent: bool = True) -> Any:
@@ -1530,6 +1562,32 @@ def _add_doc_bullet(doc: Any, text: str) -> Any:
     return p
 
 
+def _add_doc_footer(doc: Any) -> None:
+    from docx.shared import Pt
+    from docx.oxml.ns import qn
+
+    _add_doc_body(doc, "", indent=False)
+    p = doc.add_paragraph()
+    pf = p.paragraph_format
+    pf.line_spacing = Pt(28)
+    pf.space_before = Pt(16)
+    pf.first_line_indent = Pt(0)
+    pf.alignment = 1
+    run = p.add_run("由 ParkFlow AI 生成，仅供参考。")
+    run.font.name = "仿宋"
+    run.font.size = Pt(10)
+    run.italic = True
+    run.element.rPr.rFonts.set(qn("w:eastAsia"), "仿宋")
+
+
+def _clean_text(value: Any) -> str:
+    text = _safe_text(value)
+    text = text.replace("**", "").replace("__", "")
+    text = text.replace("```", "").replace("`", "")
+    text = text.replace("——", "——")
+    return text.strip()
+
+
 def _chinese_num(n: int) -> str:
     nums = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十"]
     if n <= 10:
@@ -1539,92 +1597,143 @@ def _chinese_num(n: int) -> str:
     return str(n)
 
 
+def _build_report_table(doc: Any, ranked: list[dict[str, Any]]) -> None:
+    from docx.shared import Pt, Cm
+    from docx.oxml.ns import qn
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+    if not ranked:
+        return
+    table = doc.add_table(rows=1 + min(len(ranked), 10), cols=5)
+    table.style = "Table Grid"
+    headers = ["序号", "企业名称", "产业方向", "匹配分", "推荐原因"]
+    widths = [Cm(1.0), Cm(3.5), Cm(2.5), Cm(1.5), Cm(7.5)]
+    for i, (header, width) in enumerate(zip(headers, widths)):
+        cell = table.rows[0].cells[i]
+        cell.width = width
+        p = cell.paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.line_spacing = Pt(22)
+        p.paragraph_format.first_line_indent = Pt(0)
+        run = p.add_run(header)
+        run.font.name = "黑体"
+        run.font.size = Pt(10)
+        run.bold = True
+        run.element.rPr.rFonts.set(qn("w:eastAsia"), "黑体")
+    for idx, company in enumerate(ranked[:10]):
+        if not isinstance(company, dict):
+            continue
+        row = table.rows[idx + 1]
+        values = [
+            str(idx + 1),
+            _clean_text(company.get("name", "")),
+            _clean_text(company.get("industry", company.get("sub_industry", ""))),
+            str(company.get("score", "-")),
+            _clean_text(company.get("reason", ""))[:60],
+        ]
+        for col, value in enumerate(values):
+            cell = row.cells[col]
+            cell.width = widths[col]
+            p = cell.paragraphs[0]
+            p.paragraph_format.line_spacing = Pt(20)
+            p.paragraph_format.first_line_indent = Pt(0)
+            run = p.add_run(value)
+            run.font.name = "仿宋"
+            run.font.size = Pt(9)
+            run.element.rPr.rFonts.set(qn("w:eastAsia"), "仿宋")
+    _add_doc_body(doc, "", indent=False)
+
+
 def build_report_docx(report: dict[str, Any], context: dict[str, Any]) -> bytes:
     from docx import Document
-    from docx.shared import Pt
-    from docx.oxml.ns import qn
 
     doc = Document()
     _setup_doc_style(doc)
+    _add_doc_title(doc, "园区重点招商企业推荐建议")
 
-    _add_doc_title(doc, "企业招商研判报告")
-
-    verdict = _safe_text(report.get("verdict", ""))
-    summary = _safe_text(report.get("summary", ""))
+    verdict = _clean_text(report.get("verdict", ""))
+    summary = _clean_text(report.get("summary", ""))
     metrics = report.get("metrics") or {}
-
-    _add_doc_heading(doc, "一、核心判断", "黑体")
-    _add_doc_body(doc, f"结论：{verdict}")
-    if summary:
-        _add_doc_body(doc, summary)
-
-    _add_doc_heading(doc, "二、关键指标", "黑体")
-    _add_doc_body(doc, f"匹配度：{_safe_text(metrics.get('match_score', '-'))}　　"
-                       f"风险等级：{_safe_text(metrics.get('risk_level', '-'))}　　"
-                       f"建议动作：{_safe_text(metrics.get('recommended_action', '-'))}")
-
     sections = report.get("sections") or []
-    section_counter = 3
-    for section in sections:
-        if not isinstance(section, dict):
-            continue
-        sec_title = _safe_text(section.get("title"))
-        if not sec_title:
-            continue
-        _add_doc_heading(doc, f"{_chinese_num(section_counter)}、{sec_title}", "黑体")
+    ranked = report.get("ranked_companies") or context.get("candidate_enterprises") or []
+
+    _add_doc_heading(doc, "一、总体判断")
+    _add_doc_body(doc, f"经综合研判，{verdict}。{summary}")
+
+    _add_doc_heading(doc, "二、筛选逻辑")
+    candidate_count = len(ranked)
+    industries = list({_safe_text(c.get("industry", "")) for c in ranked[:5] if isinstance(c, dict)})
+    logic_text = f"基于本地企业库、产业图谱、政策匹配与风险数据，从候选池中筛选出 {candidate_count} 家企业。重点考量产业方向匹配度（{', '.join(industries[:3]) or '多元方向'}）、企业成长阶段、租金承载力、技术积累与风险安全等维度，综合排序形成推荐名单。"
+    _add_doc_body(doc, logic_text)
+
+    _add_doc_heading(doc, "三、推荐企业清单")
+    _build_report_table(doc, ranked)
+
+    section_counter = 4
+    profile_section = next((s for s in sections if isinstance(s, dict) and s.get("id") == "profile"), None)
+    if profile_section:
+        _add_doc_heading(doc, f"{_chinese_num(section_counter)}、{_clean_text(profile_section.get('title', '重点企业说明'))}")
         section_counter += 1
-        body = _safe_text(section.get("body"))
+        body = _clean_text(profile_section.get("body", ""))
         if body:
             _add_doc_body(doc, body)
-        for bullet in (section.get("bullets") or []):
-            _add_doc_bullet(doc, _safe_text(bullet))
-
-    ranked = report.get("ranked_companies") or context.get("candidate_enterprises") or []
-    if ranked:
-        _add_doc_heading(doc, f"{_chinese_num(section_counter)}、候选企业排名", "黑体")
+        for bullet in (profile_section.get("bullets") or []):
+            _add_doc_bullet(doc, _clean_text(bullet))
+    elif ranked:
+        _add_doc_heading(doc, f"{_chinese_num(section_counter)}、重点企业说明")
         section_counter += 1
-        for idx, company in enumerate(ranked[:8]):
-            if not isinstance(company, dict):
-                continue
-            line = f"{idx + 1}. {_safe_text(company.get('name'))}　匹配分 {_safe_text(company.get('score', '-'))}"
-            reason = _safe_text(company.get("reason", ""))
-            if reason:
-                line += f"\n　—— {reason[:80]}"
-            _add_doc_bullet(doc, line)
+        top = ranked[0] if isinstance(ranked[0], dict) else {}
+        _add_doc_body(doc, f"首推企业为{_clean_text(top.get('name', ''))}，"
+                       f"该企业聚焦{_clean_text(top.get('industry', ''))}赛道，"
+                       f"匹配分{_safe_text(top.get('score', '-'))}分，"
+                       f"具备较强的产业契合度与落地潜力。")
+
+    risk_section = next((s for s in sections if isinstance(s, dict) and s.get("id") == "risk"), None)
+    if risk_section:
+        _add_doc_heading(doc, f"{_chinese_num(section_counter)}、风险与待核验事项")
+        section_counter += 1
+        body = _clean_text(risk_section.get("body", ""))
+        if body:
+            _add_doc_body(doc, body)
+        for bullet in (risk_section.get("bullets") or []):
+            _add_doc_bullet(doc, _clean_text(bullet))
+    else:
+        _add_doc_heading(doc, f"{_chinese_num(section_counter)}、风险与待核验事项")
+        section_counter += 1
+        risk_level = _safe_text(metrics.get("risk_level", "待确认"))
+        _add_doc_body(doc, f"当前风险等级为{risk_level}。建议在正式推进前，逐项核验企业资质、经营状态与落地意愿。")
+
+    action_section = next((s for s in sections if isinstance(s, dict) and s.get("id") == "action"), None)
+    action_plan = report.get("action_plan") or []
+    _add_doc_heading(doc, f"{_chinese_num(section_counter)}、下一步推进建议")
+    section_counter += 1
+    if action_section:
+        body = _clean_text(action_section.get("body", ""))
+        if body:
+            _add_doc_body(doc, body)
+    if action_plan:
+        for idx, action in enumerate(action_plan, 1):
+            _add_doc_body(doc, f"（{_chinese_num(idx)}）{_clean_text(action)}")
+    if not action_plan and not action_section:
+        _add_doc_body(doc, "建议优先推进排名靠前的企业，同步开展资质核验与政策匹配，择机启动拜访邀约。")
 
     policy_matches = report.get("policy_matches") or []
     if policy_matches:
-        _add_doc_heading(doc, f"{_chinese_num(section_counter)}、政策匹配", "黑体")
+        _add_doc_heading(doc, f"{_chinese_num(section_counter)}、可匹配政策资源")
         section_counter += 1
         for policy in policy_matches:
-            _add_doc_bullet(doc, _safe_text(policy))
-
-    action_plan = report.get("action_plan") or []
-    if action_plan:
-        _add_doc_heading(doc, f"{_chinese_num(section_counter)}、推进计划", "黑体")
-        section_counter += 1
-        for idx, action in enumerate(action_plan, 1):
-            _add_doc_body(doc, f"（{_chinese_num(idx)}）{_safe_text(action)}")
+            _add_doc_bullet(doc, _clean_text(policy))
 
     evidence = context.get("evidence") or []
     if evidence:
-        _add_doc_heading(doc, "附件：判断依据", "楷体")
+        _add_doc_heading(doc, "附件：判断依据")
         for item in evidence[:8]:
             if not isinstance(item, dict):
                 continue
-            src = f"{_safe_text(item.get('title'))}（{_safe_text(item.get('source'))}）"
+            src = f"{_clean_text(item.get('title'))}（{_safe_text(item.get('source'))}）"
             _add_doc_bullet(doc, src)
 
-    _add_doc_body(doc, "", indent=False)
-    p = doc.add_paragraph()
-    p.paragraph_format.line_spacing = Pt(28)
-    p.alignment = 1
-    run = p.add_run("由 ParkFlow AI 生成，仅供参考。")
-    run.font.name = "仿宋"
-    run.font.size = Pt(10)
-    run.italic = True
-    run.element.rPr.rFonts.set(qn("w:eastAsia"), "仿宋")
-
+    _add_doc_footer(doc)
     buf = io.BytesIO()
     doc.save(buf)
     return buf.getvalue()
@@ -1632,49 +1741,116 @@ def build_report_docx(report: dict[str, Any], context: dict[str, Any]) -> bytes:
 
 def build_material_docx(material: dict[str, Any], material_type: str) -> bytes:
     from docx import Document
-    from docx.shared import Pt
-    from docx.oxml.ns import qn
 
     doc = Document()
     _setup_doc_style(doc)
 
-    label = MATERIAL_LABELS.get(material_type, material_type or "招商材料")
-    title = _safe_text(material.get("title")) or label
-    _add_doc_title(doc, title)
-
-    audience = _safe_text(material.get("audience"))
-    if audience:
-        p = doc.add_paragraph()
-        p.paragraph_format.line_spacing = Pt(28)
-        p.paragraph_format.first_line_indent = Pt(0)
-        run = p.add_run(f"对象：{audience}")
-        run.font.name = "楷体"
-        run.font.size = Pt(14)
-        run.element.rPr.rFonts.set(qn("w:eastAsia"), "楷体")
-
+    title = _clean_text(material.get("title")) or MATERIAL_LABELS.get(material_type, "招商材料")
+    audience = _clean_text(material.get("audience"))
     content = material.get("content") or []
-    if isinstance(content, list):
-        for para in content:
-            _add_doc_body(doc, _safe_text(para))
-    else:
-        _add_doc_body(doc, _safe_text(content))
-
     source_notes = material.get("source_notes") or []
-    if source_notes:
-        _add_doc_heading(doc, "依据", "楷体")
-        for note in source_notes:
-            _add_doc_bullet(doc, _safe_text(note))
 
-    _add_doc_body(doc, "", indent=False)
-    p = doc.add_paragraph()
-    p.paragraph_format.line_spacing = Pt(28)
-    p.alignment = 1
-    run = p.add_run("由 ParkFlow AI 生成，可直接用于招商工作。")
-    run.font.name = "仿宋"
-    run.font.size = Pt(10)
-    run.italic = True
-    run.element.rPr.rFonts.set(qn("w:eastAsia"), "仿宋")
+    if material_type == "outline":
+        company_name = _clean_text(material.get("company_name") or audience or "企业")
+        doc_title = f"关于赴{company_name}开展招商拜访的提纲"
+        _add_doc_title(doc, doc_title)
+        _add_doc_heading(doc, "一、拜访目的")
+        _add_doc_body(doc, f"了解{company_name}的发展现状、核心产品与市场布局，推介光谷智创园的产业生态、政策优势与空间资源，探讨双方在技术研发、产业协同、项目落地等领域的合作机会。")
+        _add_doc_heading(doc, "二、企业背景预研")
+        _add_doc_body(doc, f"提前研读{company_name}的公开信息：主营业务、融资阶段、团队背景、专利布局、近期动态。梳理其与园区现有产业集群的潜在协同点，准备针对性问题清单。")
+        _add_doc_heading(doc, "三、园区推介要点")
+        _add_doc_body(doc, "重点介绍园区产业集聚效应（45家高新技术企业入驻）、科研支撑（国家级实验室与中试基地）、人才保障（周边3所985高校）、交通与生活配套等核心优势，结合企业实际情况侧重呈现相关政策资源。")
+        _add_doc_heading(doc, "四、政策对接准备")
+        _add_doc_body(doc, "根据企业资质与需求，提前准备可匹配的政策清单与申报条件，编制《政策兑现路径图》，确保拜访中能够清晰传达园区的实质性支持。")
+        _add_doc_heading(doc, "五、沟通提纲")
+        for idx, para in enumerate(content[:8], 1):
+            _add_doc_body(doc, f"（{_chinese_num(idx)}）{_clean_text(para)}")
+        if not content:
+            _add_doc_body(doc, "（一）了解企业当前发展阶段、核心诉求与布局规划。")
+            _add_doc_body(doc, "（二）介绍园区产业生态、空间资源与政策配套。")
+            _add_doc_body(doc, "（三）探讨潜在合作模式与落地可行性。")
+        _add_doc_heading(doc, "六、需重点确认事项")
+        _add_doc_bullet(doc, "企业是否已获得高新技术企业等相关资质认定")
+        _add_doc_bullet(doc, "核心团队跨区域搬迁或设立分支机构的意愿与条件")
+        _add_doc_bullet(doc, "企业当前对办公/厂房空间的面积与配套需求")
+        _add_doc_heading(doc, "七、后续跟进节点")
+        _add_doc_body(doc, "拜访结束后24小时内发送会议纪要与政策匹配清单；48小时内确认双方下一步对接人及时间表；一周内完成内部研判并形成推进方案。")
+        _add_doc_heading(doc, "八、附件清单")
+        _add_doc_bullet(doc, "园区宣传册（电子版）")
+        _add_doc_bullet(doc, "政策匹配清单与企业资质对照表")
+        _add_doc_bullet(doc, "园区空间资源一览（含户型图与实景照片）")
+        if source_notes:
+            for note in source_notes[:3]:
+                _add_doc_bullet(doc, _clean_text(note))
 
+    elif material_type == "wechat":
+        company_name = _clean_text(material.get("company_name") or audience or "企业")
+        doc_title = f"{company_name}招商跟进话术"
+        _add_doc_title(doc, doc_title)
+        _add_doc_heading(doc, "一、首次触达话术")
+        _add_doc_body(doc, f"{company_name}您好，我是光谷智创园招商负责人。关注到贵司在{_clean_text(material.get('industry', '相关领域'))}的突出表现，我园已集聚45家高新技术企业，配备国家级实验室与中试基地，可为企业提供从空间到政策的全方位支持。诚邀您择机来园实地考察，期待深入交流。")
+        _add_doc_heading(doc, "二、二次跟进话术")
+        _add_doc_body(doc, f"上次与您沟通后，我们针对{company_name}的发展方向梳理了匹配的政策清单与空间方案。园区在产业集聚、科研支撑与人才保障方面具有明显优势，期待能与贵司进一步探讨合作可能。")
+        _add_doc_heading(doc, "三、政策引导话术")
+        _add_doc_body(doc, "根据贵司的资质条件，可叠加享受高新技术企业入驻奖励（3年免租）、专精特新企业奖励（50万元）以及人才引进安家补贴（博士30万/硕士10万）。我们可协助您完成全流程申报。")
+        _add_doc_heading(doc, "四、异议应对")
+        _add_doc_body(doc, "若企业表达对园区区位、配套或成本的疑虑：理解您的考量。光谷智创园毗邻华中科技大学与武汉大学，人才资源丰富；交通方面，地铁、高速、高铁三位一体；空间方面，从50平方米孵化工位到5000平方米大型厂房均可灵活配置。建议实地考察后再做评估。")
+        _add_doc_heading(doc, "五、促成邀约")
+        _add_doc_body(doc, f"真诚邀请{company_name}团队来园实地考察，我们将安排专人全程陪同，参观园区核心设施、对接已入驻龙头企业，并就具体政策支持进行一对一沟通。如方便，请告知贵司近期可安排的时间。")
+        _add_doc_heading(doc, "六、注意事项")
+        _add_doc_bullet(doc, "话术使用时应根据实际沟通场景灵活调整，保持专业、克制的语调")
+        _add_doc_bullet(doc, "首次触达建议通过微信或电话进行，避免群发式消息")
+        _add_doc_bullet(doc, "跟进节奏控制在每周1-2次，避免过度打扰")
+        if source_notes:
+            for note in source_notes[:3]:
+                _add_doc_bullet(doc, _clean_text(note))
+
+    elif material_type == "briefing":
+        doc_title = "招商工作汇报摘要"
+        _add_doc_title(doc, doc_title)
+        _add_doc_heading(doc, "一、本期重点线索")
+        if content:
+            for para in content[:3]:
+                _add_doc_body(doc, _clean_text(para))
+        else:
+            _add_doc_body(doc, f"根据招商任务要求，已完成企业筛选与研判，识别出具有较高落地潜力的候选企业，现将研判结果与推进建议汇报如下。")
+        _add_doc_heading(doc, "二、候选企业概况")
+        _add_doc_body(doc, _clean_text(material.get("summary", "详见招商研判报告中的推荐企业清单与排序依据。")))
+        _add_doc_heading(doc, "三、政策与资源匹配")
+        if source_notes:
+            for note in source_notes[:3]:
+                _add_doc_bullet(doc, _clean_text(note))
+        _add_doc_heading(doc, "四、下一步工作安排")
+        _add_doc_body(doc, "一是启动首推企业的定向拜访邀约；二是推进政策匹配与空间资源预配；三是持续跟踪候选企业动态，滚动更新推荐名单。")
+        _add_doc_heading(doc, "五、需要协调事项")
+        _add_doc_body(doc, "请领导协调相关部门，为本次招商推进提供必要的政策解读、空间调配与接待支持。")
+        if audience:
+            _add_doc_heading(doc, "六、汇报对象")
+            _add_doc_body(doc, audience)
+
+    else:
+        _add_doc_title(doc, title)
+        if audience:
+            from docx.shared import Pt
+            from docx.oxml.ns import qn
+            p = doc.add_paragraph()
+            p.paragraph_format.line_spacing = Pt(28)
+            p.paragraph_format.first_line_indent = Pt(0)
+            run = p.add_run(f"对象：{audience}")
+            run.font.name = "楷体"
+            run.font.size = Pt(14)
+            run.element.rPr.rFonts.set(qn("w:eastAsia"), "楷体")
+        if isinstance(content, list):
+            for para in content:
+                _add_doc_body(doc, _clean_text(para))
+        else:
+            _add_doc_body(doc, _clean_text(content))
+        if source_notes:
+            _add_doc_heading(doc, "依据")
+            for note in source_notes:
+                _add_doc_bullet(doc, _clean_text(note))
+
+    _add_doc_footer(doc)
     buf = io.BytesIO()
     doc.save(buf)
     return buf.getvalue()
@@ -2077,15 +2253,21 @@ class Handler(BaseHTTPRequestHandler):
                 "evidence": context.get("evidence", []),
                 "steps": context.get("steps", []),
                 "actions": context.get("actions", []),
-                "report": draft_report(context),
             }
         )
-        self.send_stream_event({"event": "stage", "id": "llm", "label": "形成招商建议", "status": "active", "detail": "正在综合企业画像、政策匹配与风险信息生成招商研判..."})
+        self.send_stream_event({"event": "status", "label": "正在生成招商建议", "detail": "正在综合企业画像、政策匹配与风险信息生成招商研判..."})
+        chunks: list[str] = []
+
+        def on_chunk(piece: str) -> None:
+            chunks.append(piece)
+            self.send_stream_event({"event": "text_delta", "content": piece})
+
         try:
-            report = generate_report(context)
+            report = generate_report_stream(context, on_chunk=on_chunk)
             self.send_stream_event(
                 {
-                    "event": "report",
+                    "event": "artifact",
+                    "type": "recommendation",
                     "ok": True,
                     "elapsed_ms": int((time.time() - started) * 1000),
                     "intent": context.get("intent"),
@@ -2100,13 +2282,13 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as exc:
             self.send_stream_event(
                 {
-                    "event": "report",
+                    "event": "artifact",
+                    "type": "recommendation",
                     "ok": True,
                     "draft": True,
                     "elapsed_ms": int((time.time() - started) * 1000),
                     "intent": context.get("intent"),
                     "message": "模型暂时不可用，已展示 Agent 完成的候选筛选与依据底稿。",
-                    "error": str(exc),
                     "context": compact_context_for_llm(context),
                     "sources": context.get("sources", []),
                     "evidence": context.get("evidence", []),
@@ -2252,9 +2434,9 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 self.send_json({"ok": False, "error": f"报告导出失败：{exc}"}, 500)
                 return
-            company = _safe_text(context.get("company_name") or report.get("company_name", ""))
             ext = "pdf" if export_format == "pdf" else "docx"
-            raw = f"招商研判报告_{company}.{ext}" if company else f"招商研判报告.{ext}"
+            date_str = time.strftime("%Y%m%d")
+            raw = f"园区重点招商企业推荐建议_{date_str}.{ext}"
             filename = urllib.parse.quote(raw)
             self.send_response(200)
             self.send_header("Content-Type", mime)
@@ -2284,9 +2466,17 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 self.send_json({"ok": False, "error": f"材料导出失败：{exc}"}, 500)
                 return
-            label = MATERIAL_LABELS.get(material_type, material_type or "招商材料")
             ext = "pdf" if export_format == "pdf" else "docx"
-            filename = urllib.parse.quote(f"{label}.{ext}")
+            date_str = time.strftime("%Y%m%d")
+            company = _safe_text(material.get("company_name") or "")
+            if material_type == "outline":
+                raw = f"关于赴{company}开展招商拜访的提纲_{date_str}.{ext}" if company else f"招商拜访提纲_{date_str}.{ext}"
+            elif material_type == "wechat":
+                raw = f"{company}招商跟进话术_{date_str}.{ext}" if company else f"招商跟进话术_{date_str}.{ext}"
+            else:
+                label = MATERIAL_LABELS.get(material_type, material_type or "招商材料")
+                raw = f"{label}_{date_str}.{ext}"
+            filename = urllib.parse.quote(raw)
             self.send_response(200)
             self.send_header("Content-Type", mime)
             self.send_header("Content-Disposition", f"attachment; filename*=UTF-8''{filename}")

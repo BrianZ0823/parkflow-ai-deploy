@@ -44,6 +44,7 @@
               <textarea id="homeInput" rows="2" spellcheck="false" placeholder="输入招商目标，例如：帮我找 8 家适合重点推进的芯片企业，并说明推荐理由"></textarea>
               <button type="submit">开始</button>
             </form>
+            <div class="home-hint" id="homeHint" role="status" aria-live="polite"></div>
           </section>
 
           <section class="home-section">
@@ -51,19 +52,19 @@
               <span>快捷开始</span>
             </div>
             <div class="home-starter-grid">
-              <button type="button" data-home-prompt="找出适合重点推进的 8 家企业，并说明推荐理由、风险提示和下一步推进建议。">
+              <button type="button" data-home-prompt="帮我筛选 8 家适合重点推进的企业，并说明推荐理由、风险提示和下一步推进建议。">
                 <strong>筛选重点企业</strong>
                 <span>形成可追问、可加入清单的候选企业建议。</span>
               </button>
-              <button type="button" data-home-prompt="帮我匹配 5 家生物医药方向企业，并输出推荐理由和拜访前需要核验的问题。">
+              <button type="button" data-home-prompt="围绕【产业方向】梳理园区可以优先推进的招商机会，并推荐匹配企业。">
                 <strong>匹配产业方向</strong>
                 <span>围绕指定赛道发现企业线索。</span>
               </button>
-              <button type="button" data-home-prompt="分析未来芯片科技是否值得重点推进，并生成拜访提纲。">
+              <button type="button" data-home-prompt="分析【企业名称】是否适合重点推进，并输出推荐理由、风险提示和拜访前需要核验的问题。">
                 <strong>分析单家企业</strong>
                 <span>沉淀企业画像、风险和材料。</span>
               </button>
-              <button type="button" data-home-prompt="基于当前园区政策，生成一份适合招商首次触达的邀约话术。">
+              <button type="button" data-home-prompt="基于当前推荐企业和判断依据，生成一份可直接使用的招商拜访提纲。">
                 <strong>生成招商材料</strong>
                 <span>把判断转成可直接使用的沟通文本。</span>
               </button>
@@ -106,10 +107,7 @@
                 rows="1"
                 placeholder="继续追问：为什么推荐第 1 家？帮我生成拜访提纲？排除高风险企业？"
               ></textarea>
-              <button type="button" class="voice-button" id="voiceInputButton" aria-label="语音输入" title="语音输入">
-                <span>语音</span>
-              </button>
-              <button type="submit" class="submit-button" aria-label="发送">
+<button type="submit" class="submit-button" aria-label="发送">
                 <span>发送</span>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h12M13 7l5 5-5 5" /></svg>
               </button>
@@ -161,6 +159,26 @@
             </div>
           </section>
         </aside>
+
+        <div class="shortlist-shelf" id="shortlistShelf" data-expanded="false">
+          <button class="shelf-tab" id="shelfTab" type="button" aria-label="跟进清单">
+            <span>清单</span>
+            <span class="shelf-count" id="shelfCount">0</span>
+          </button>
+          <div class="shelf-body" id="shelfBody">
+            <header class="shelf-header">
+              <strong>跟进清单</strong>
+              <span class="shelf-hint">当前 thread</span>
+            </header>
+            <div class="shelf-list" id="shelfList">
+              <p class="shelf-empty">加入企业后，这里会列出准备继续推进的线索。</p>
+            </div>
+            <footer class="shelf-footer">
+              <button type="button" class="shelf-action primary" id="shelfCompare" disabled>对比企业</button>
+              <button type="button" class="shelf-action" id="shelfBatchOutline">生成提纲</button>
+            </footer>
+          </div>
+        </div>
       </section>
 
       <dialog class="source-dialog" id="sourceDialog">
@@ -192,7 +210,22 @@
       </aside>
     </main>
 
+    <div id="debugPanel" class="debug-panel" hidden>
+      <header>
+        <strong>Debug Panel</strong>
+        <button type="button" id="debugClose">×</button>
+      </header>
+      <section>
+        <h4>Raw Chunks</h4>
+        <pre class="debug-raw"></pre>
+      </section>
+      <section>
+        <h4>Parsed JSON</h4>
+        <pre class="debug-parsed"></pre>
+      </section>
+    </div>
+
     <script src="./config.js"></script>
-    <script src="./app.js?v=20260615-message-actions"></script>
+    <script src="./app.js?v=20260616-stream-fix"></script>
   </body>
 </html>

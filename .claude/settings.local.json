@@ -1,7 +1,41 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(docker --version)",
+      "Bash(netlify --version)",
+      "Bash(C:/Users/Brian/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe *)",
+      "Bash(python *)",
+      "Bash(node *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:8765/health)",
+      "Bash(kill %1)",
+      "Bash(pip install *)",
+      "Bash(curl -s http://127.0.0.1:8765/api/health)",
+      "Bash(curl -s -X POST http://127.0.0.1:8765/api/export/report -H 'Content-Type: application/json' -d '{\"report\":{\"verdict\":\"test\",\"summary\":\"test\"},\"context\":{},\"format\":\"pdf\"}' -o /tmp/test_report.pdf -w '%{http_code} %{size_download} bytes')",
+      "Bash(curl -s -X POST http://127.0.0.1:8765/api/export/report -H 'Content-Type: application/json' -d '{\"report\":{\"verdict\":\"test\",\"summary\":\"test\"},\"context\":{},\"format\":\"docx\"}' -o /tmp/test_report.docx -w '%{http_code} %{size_download} bytes')",
+      "Bash(curl -v -X POST http://127.0.0.1:8765/api/export/report -H 'Content-Type: application/json' -d '{\"report\":{\"verdict\":\"test\",\"summary\":\"test\"},\"context\":{},\"format\":\"docx\"}' -o /tmp/test_report.docx)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code} Size %{size_download}\" -X POST http://127.0.0.1:8765/api/export/report -H \"Content-Type: application/json\" -d '{\"report\":{\"verdict\":\"test\",\"summary\":\"test\"},\"context\":{},\"format\":\"docx\"}')",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code} Size %{size_download}\" -X POST http://127.0.0.1:8765/api/export/report -H \"Content-Type: application/json\" -d '{\"report\":{\"verdict\":\"test\",\"summary\":\"test\"},\"context\":{},\"format\":\"pdf\"}')",
+      "Bash(curl -s -X POST http://127.0.0.1:8765/api/message_stream -H \"Content-Type: application/json\" -d '{\"task\":\"帮我找3家新能源企业\",\"thread_id\":\"test-stream\"}')",
+      "Bash(tasklist /FI \"IMAGENAME eq python.exe\")",
+      "Bash(curl -s --max-time 5 http://127.0.0.1:8765/api/health)",
+      "Bash(curl *)",
+      "Bash(pkill -f \"python mvp-app/server.py\")",
+      "Bash(python mvp-app/server.py)",
+      "Bash(echo \"Server PID: $!\")",
+      "Read(//tmp/**)",
+      "Bash(echo \"EXIT_CODE: $?\")",
+      "Bash(pkill -9 -f \"python\")",
+      "Bash(echo \"Exit: $?\")",
+      "Bash(netstat -ano)",
+      "Bash(echo \"PID: $!\")",
+      "Read(//c/Users/Brian/AppData/Local/Temp/**)",
+      "Bash(docker info *)",
+      "Bash(echo \"Python: $\\(python -V 2>/dev/null || echo 'N/A'\\)\")",
+      "Bash(npm -v)",
+      "Bash(echo \"npm: $\\(npm -v 2>/dev/null || echo 'N/A'\\)\")",
+      "Bash(gh auth *)",
+      "Bash(gh repo *)"
     ]
   }
 }

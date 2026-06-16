@@ -1,0 +1,155 @@
+{
+    "trends": [
+        {
+            "id": 1,
+            "industry": "人工智能",
+            "title": "大模型进入多模态时代，视觉-语言融合成主流",
+            "description": "2026年AI大模型发展呈现显著的多模态趋势。GPT-5、Gemini 2.0等新一代模型均支持文本、图像、音频、视频的统一理解和生成。国内智谱AI、百川智能等也推出了多模态大模型产品。",
+            "keywords": [
+                "多模态",
+                "大模型",
+                "视觉语言融合"
+            ],
+            "impact_level": "高",
+            "time_period": "2025-2026",
+            "source": "Gartner 2026 AI技术趋势报告",
+            "url": "https://example.com/trend/1"
+        },
+        {
+            "id": 2,
+            "industry": "半导体",
+            "title": "先进封装成为摩尔定律延续关键，Chiplet架构加速普及",
+            "description": "随着制程工艺逼近物理极限，先进封装技术（CoWoS、Fove、Chiplet等）成为提升芯片性能的主要手段。台积电、Intel、AMD均大力投资先进封装产线。预计2026年采用Chiplet架构的芯片出货量将增长300%。",
+            "keywords": [
+                "先进封装",
+                "Chiplet",
+                "摩尔定律"
+            ],
+            "impact_level": "高",
+            "time_period": "2025-2027",
+            "source": "Yole Développement",
+            "url": "https://example.com/trend/2"
+        },
+        {
+            "id": 3,
+            "industry": "生物医药",
+            "title": "基因编辑疗法商业化提速，CRISPR技术获批产品增多",
+            "summary": "CRISPR基因编辑疗法在2025年取得突破性进展，全球已有5款CRISPR疗法获批上市，涵盖镰刀型贫血症、地中海贫血、遗传性血管性水肿等疾病。中国药企华大基因、药明生物也在加快CRISPR管线布局。",
+            "description": "CRISPR基因编辑技术自2020年获诺贝尔奖以来，商业化进程显著加速。2025年全球获批的CRISPR疗法达到5款，治疗领域从罕见病向肿瘤、心血管疾病拓展。中国的CRISPR临床试验数量已超过美国，华大基因、药明生物、康瑞生物等企业均有在研管线进入临床后期。",
+            "keywords": [
+                "CRISPR",
+                "基因编辑",
+                "细胞疗法"
+            ],
+            "impact_level": "高",
+            "time_period": "2025-2028",
+            "source": "Nature Biotechnology",
+            "url": "https://example.com/trend/3"
+        },
+        {
+            "id": 4,
+            "industry": "新能源",
+            "title": "固态电池进入量产前夜，能量密度突破400Wh/kg",
+            "description": "固态电池技术在2025年取得重大突破，多家企业（丰田、宁德时代、卫蓝新能源）宣布将在2026-2027年实现固态电池量产。半固态电池能量密度已突破400Wh/kg，全固态电池预计在2028年商业化。",
+            "keywords": [
+                "固态电池",
+                "能量密度",
+                "宁德时代"
+            ],
+            "impact_level": "高",
+            "time_period": "2026-2028",
+            "source": "BloombergNEF",
+            "url": "https://example.com/trend/4"
+        },
+        {
+            "id": 5,
+            "industry": "量子科技",
+            "title": "量子计算进入「实用优势」阶段，金融和制药领域率先应用",
+            "description": "2025年，IBM、Google、IonQ等公司的量子计算机在特定问题上开始展现对经典计算机的实质性优势。量子退火算法在金融风控、药物分子模拟等领域开始商业化应用。中国本源量子、国盾量子也推出百量子比特以上的量子计算机。",
+            "keywords": [
+                "量子计算",
+                "量子优势",
+                "量子退火"
+            ],
+            "impact_level": "中",
+            "time_period": "2025-2030",
+            "source": "MIT Technology Review",
+            "url": "https://example.com/trend/5"
+        },
+        {
+            "id": 6,
+            "industry": "网络安全",
+            "title": "零信任架构成为企业安全标配，SASE市场爆发增长",
+            "description": "后疫情时代远程办公常态化，传统边界防护模式失效，零信任安全架构(ZTA)和安全访问服务边缘(SASE)成为企业网络安全新标准。Gartner预测2026年全球SASE市场规模将达150亿美元，年增长率超40%。",
+            "keywords": [
+                "零信任",
+                "SASE",
+                "网络安全"
+            ],
+            "impact_level": "高",
+            "time_period": "2025-2027",
+            "source": "Gartner",
+            "url": "https://example.com/trend/6"
+        },
+        {
+            "id": 7,
+            "industry": "碳中和",
+            "title": "CCUS技术大规模商业化，全球捕集能力将达2亿吨/年",
+            "description": "碳捕集、利用与封存(CCUS)技术在2025年迎来商业化拐点。全球已建成或在建的大型CCUS项目超过300个，预计2030年全球CCUS捕集能力将达到2亿吨CO2/年。中国、美国、欧盟均出台了CCUS税收抵免政策。",
+            "keywords": [
+                "CCUS",
+                "碳捕集",
+                "碳中和"
+            ],
+            "impact_level": "高",
+            "time_period": "2025-2030",
+            "source": "IEA全球能源展望",
+            "url": "https://example.com/trend/7"
+        },
+        {
+            "id": 8,
+            "industry": "元宇宙",
+            "title": "空间计算设备出货量破千万，苹果Vision Pro引领产业",
+            "description": "Apple Vision Pro发布后，空间计算设备（AR/VR/MR）市场快速增长。2025年全球空间计算设备出货量达1200万台，同比增长150%。Meta Quest 3、索尼PSVR2等产品也推动了XR内容生态繁荣。",
+            "keywords": [
+                "空间计算",
+                "Vision Pro",
+                "XR"
+            ],
+            "impact_level": "中",
+            "time_period": "2025-2026",
+            "source": "IDC",
+            "url": "https://example.com/trend/8"
+        },
+        {
+            "id": 9,
+            "industry": "智能制造",
+            "title": "AI+工业互联网深度融合，数字孪生技术普及率超30%",
+            "description": "工业领域AI应用从质检、预测性维护向全流程优化延伸。数字孪生技术在汽车、航空、电力等行业普及率超过30%。西门子、施耐德等巨头均推出了基于AI的工业互联网平台。",
+            "keywords": [
+                "AI工业",
+                "数字孪生",
+                "工业互联网"
+            ],
+            "impact_level": "中",
+            "time_period": "2025-2027",
+            "source": "麦肯锡",
+            "url": "https://example.com/trend/9"
+        },
+        {
+            "id": 10,
+            "industry": "脑机接口",
+            "title": "非侵入式脑机接口商业化加速，消费级产品开始普及",
+            "description": "Neuralink的侵入式脑机接口临床试验取得进展，同时非侵入式脑机接口（如脑电EEG设备）在消费市场快速增长。应用场景从医疗康复拓展至游戏、冥想、专注力训练等领域。",
+            "keywords": [
+                "脑机接口",
+                "Neuralink",
+                "非侵入式"
+            ],
+            "impact_level": "中",
+            "time_period": "2025-2030",
+            "source": "IEEE Spectrum",
+            "url": "https://example.com/trend/10"
+        }
+    ]
+}

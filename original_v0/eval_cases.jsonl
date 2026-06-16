@@ -1,0 +1,8 @@
+{"id":"TC01","question":"给未来芯片科技写一份招商邮件，重点介绍免租政策","expected_intent":"pitch_writer","expected_tools":["query_crm_status","query_policies","search_park_resources","find_similar_cases"],"must_include":["招商邮件","政策","依据"],"notes":"验证话术生成是否基于真实政策和企业信息"}
+{"id":"TC02","question":"分析未来芯片科技是否适合入驻","expected_intent":"enterprise_matcher","expected_tools":["get_company_risk","query_crm_status","query_industry_chain"],"must_include":["匹配度","风险","下一步建议"],"notes":"验证企业匹配分析是否综合多源数据"}
+{"id":"TC03","question":"帮我找几家做量子计算的初创公司","expected_intent":"enterprise_search","expected_tools":["search_enterprises"],"must_include":["企业","行业","员工"],"notes":"验证候选企业筛选"}
+{"id":"TC04","question":"暴雷金融这家公司能不能引进来？","expected_intent":"risk_assessment","expected_tools":["get_company_risk"],"must_include":["风险评分","风险提示"],"notes":"验证高风险企业提示"}
+{"id":"TC05","question":"半导体产业链还缺什么环节？","expected_intent":"industry_chain_gap","expected_tools":["query_industry_chain"],"must_include":["产业链","缺口"],"notes":"验证图谱补链分析"}
+{"id":"TC06","question":"查一下深思智能的跟进情况","expected_intent":"crm_query","expected_tools":["query_crm_status"],"must_include":["跟进","阶段"],"notes":"验证 CRM 查询"}
+{"id":"TC07","question":"企业入驻需要什么材料？","expected_intent":"rag_query","expected_tools":["semantic_search"],"must_include":["材料","依据"],"notes":"验证 RAG 检索和引用"}
+{"id":"TC08","question":"找一家做火星飞船的公司","expected_intent":"empty_result","expected_tools":["search_enterprises"],"must_include":["暂无","建议"],"notes":"验证空结果处理，不应编造企业"}

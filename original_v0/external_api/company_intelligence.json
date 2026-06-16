@@ -1,0 +1,235 @@
+{
+    "未来芯片科技有限公司": {
+        "unified_code": "91420100MA4F2J3X9K",
+        "legal_representative": "李明",
+        "registered_capital": "5000万",
+        "established": "2019-03-15",
+        "status": "存续",
+        "shareholders": [
+            {
+                "name": "李明",
+                "ratio": "35%"
+            },
+            {
+                "name": "红杉资本",
+                "ratio": "20%"
+            },
+            {
+                "name": "深圳创投",
+                "ratio": "15%"
+            },
+            {
+                "name": "员工持股平台",
+                "ratio": "10%"
+            },
+            {
+                "name": "其他投资人",
+                "ratio": "20%"
+            }
+        ],
+        "patents": {
+            "total": 47,
+            "invention": 32,
+            "utility_model": 10,
+            "design": 5
+        },
+        "financing_history": [
+            {
+                "round": "天使轮",
+                "amount": "500万",
+                "date": "2019-09",
+                "investor": "个人投资者"
+            },
+            {
+                "round": "A轮",
+                "amount": "3000万",
+                "date": "2020-06",
+                "investor": "深圳创投"
+            },
+            {
+                "round": "B轮",
+                "amount": "1.2亿",
+                "date": "2022-03",
+                "investor": "红杉资本"
+            },
+            {
+                "round": "C轮",
+                "amount": "3亿",
+                "date": "2024-09",
+                "investor": "国家集成电路基金"
+            }
+        ]
+    },
+    "深思智能科技有限公司": {
+        "unified_code": "91420100MA7B3K4Y1L",
+        "legal_representative": "王涛",
+        "registered_capital": "2000万",
+        "established": "2020-07-20",
+        "status": "存续",
+        "shareholders": [
+            {
+                "name": "王涛",
+                "ratio": "40%"
+            },
+            {
+                "name": "创新工场",
+                "ratio": "25%"
+            },
+            {
+                "name": "员工持股平台",
+                "ratio": "15%"
+            },
+            {
+                "name": "其他",
+                "ratio": "20%"
+            }
+        ],
+        "patents": {
+            "total": 23,
+            "invention": 18,
+            "utility_model": 5,
+            "design": 0
+        },
+        "financing_history": [
+            {
+                "round": "A轮",
+                "amount": "5000万",
+                "date": "2021-11",
+                "investor": "创新工场"
+            },
+            {
+                "round": "B轮",
+                "amount": "1.5亿",
+                "date": "2023-08",
+                "investor": "IDG资本"
+            }
+        ]
+    },
+    "暴雷金融服务有限公司": {
+        "unified_code": "91420100MA9C5L6Z2M",
+        "legal_representative": "刘坤（已被拘留）",
+        "registered_capital": "1亿（认缴）",
+        "established": "2017-05-10",
+        "status": "经营异常",
+        "shareholders": [
+            {
+                "name": "刘坤",
+                "ratio": "60%"
+            },
+            {
+                "name": "某离岸公司",
+                "ratio": "40%"
+            }
+        ],
+        "patents": {
+            "total": 2,
+            "invention": 0,
+            "utility_model": 1,
+            "design": 1
+        },
+        "financing_history": [
+            {
+                "round": "A轮",
+                "amount": "8000万",
+                "date": "2018-03",
+                "investor": "不明资金来源"
+            },
+            {
+                "round": "D轮",
+                "amount": "5亿",
+                "date": "2020-01",
+                "investor": "关联方循环融资嫌疑"
+            }
+        ]
+    },
+    "康瑞生物科技有限公司": {
+        "unified_code": "91420100MA6D7M8N3P",
+        "legal_representative": "陈博文",
+        "registered_capital": "3000万",
+        "established": "2018-11-05",
+        "status": "存续",
+        "shareholders": [
+            {
+                "name": "陈博文",
+                "ratio": "30%"
+            },
+            {
+                "name": "启明创投",
+                "ratio": "20%"
+            },
+            {
+                "name": "武汉大学技术转让中心",
+                "ratio": "15%"
+            },
+            {
+                "name": "其他",
+                "ratio": "35%"
+            }
+        ],
+        "patents": {
+            "total": 35,
+            "invention": 28,
+            "utility_model": 7,
+            "design": 0
+        },
+        "financing_history": [
+            {
+                "round": "A轮",
+                "amount": "4000万",
+                "date": "2020-03",
+                "investor": "启明创投"
+            },
+            {
+                "round": "B轮",
+                "amount": "1.8亿",
+                "date": "2022-09",
+                "investor": "高瓴创投"
+            }
+        ]
+    },
+    "盾甲安全有限公司": {
+        "unified_code": "91420100MA8E9N0P4Q",
+        "legal_representative": "陈志远",
+        "registered_capital": "1500万",
+        "established": "2021-03-18",
+        "status": "存续",
+        "shareholders": [
+            {
+                "name": "陈志远",
+                "ratio": "45%"
+            },
+            {
+                "name": "奇安信投资",
+                "ratio": "20%"
+            },
+            {
+                "name": "员工持股",
+                "ratio": "15%"
+            },
+            {
+                "name": "其他",
+                "ratio": "20%"
+            }
+        ],
+        "patents": {
+            "total": 15,
+            "invention": 12,
+            "utility_model": 3,
+            "design": 0
+        },
+        "financing_history": [
+            {
+                "round": "A轮",
+                "amount": "3000万",
+                "date": "2022-06",
+                "investor": "奇安信投资"
+            },
+            {
+                "round": "B轮",
+                "amount": "8000万",
+                "date": "2024-01",
+                "investor": "中信建投"
+            }
+        ]
+    }
+}

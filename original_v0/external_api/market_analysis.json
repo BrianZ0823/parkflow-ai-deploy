@@ -1,0 +1,444 @@
+{
+    "markets": [
+        {
+            "sector": "人工智能",
+            "market_size_2025": "5470亿美元",
+            "market_size_2030": "1.81万亿美元",
+            "cagr_2025_2030": "27.1%",
+            "major_players": [
+                {
+                    "company": "OpenAI",
+                    "market_share": "18%",
+                    "region": "美国"
+                },
+                {
+                    "company": "Google DeepMind",
+                    "market_share": "15%",
+                    "region": "美国"
+                },
+                {
+                    "company": "百度",
+                    "market_share": "8%",
+                    "region": "中国"
+                },
+                {
+                    "company": "阿里巴巴",
+                    "market_share": "7%",
+                    "region": "中国"
+                },
+                {
+                    "company": "微软",
+                    "market_share": "12%",
+                    "region": "美国"
+                }
+            ],
+            "key_segments": [
+                {
+                    "name": "大模型",
+                    "share": "35%"
+                },
+                {
+                    "name": "计算机视觉",
+                    "share": "25%"
+                },
+                {
+                    "name": "自然语言处理",
+                    "share": "20%"
+                },
+                {
+                    "name": "语音识别",
+                    "share": "10%"
+                },
+                {
+                    "name": "其他",
+                    "share": "10%"
+                }
+            ],
+            "trends": "大模型商业化提速，垂直行业应用爆发，边缘AI芯片需求激增",
+            "investment_heat": "极高",
+            "last_updated": "2026-01"
+        },
+        {
+            "sector": "半导体",
+            "market_size_2025": "6110亿美元",
+            "market_size_2030": "8200亿美元",
+            "cagr_2025_2030": "6.1%",
+            "major_players": [
+                {
+                    "company": "台积电",
+                    "market_share": "28%",
+                    "region": "中国台湾"
+                },
+                {
+                    "company": "三星",
+                    "market_share": "15%",
+                    "region": "韩国"
+                },
+                {
+                    "company": "英特尔",
+                    "market_share": "12%",
+                    "region": "美国"
+                },
+                {
+                    "company": "中芯国际",
+                    "market_share": "5%",
+                    "region": "中国"
+                },
+                {
+                    "company": "联发科",
+                    "market_share": "4%",
+                    "region": "中国台湾"
+                }
+            ],
+            "key_segments": [
+                {
+                    "name": "逻辑芯片",
+                    "share": "40%"
+                },
+                {
+                    "name": "存储芯片",
+                    "share": "30%"
+                },
+                {
+                    "name": "模拟芯片",
+                    "share": "18%"
+                },
+                {
+                    "name": "分立器件",
+                    "share": "12%"
+                }
+            ],
+            "trends": "先进封装成主流，Chiplet架构普及，AI芯片需求旺盛，国产替代加速",
+            "investment_heat": "高",
+            "last_updated": "2026-01"
+        },
+        {
+            "sector": "生物医药",
+            "market_size_2025": "1.8万亿美元",
+            "market_size_2030": "2.6万亿美元",
+            "cagr_2025_2030": "7.6%",
+            "major_players": [
+                {
+                    "company": "辉瑞",
+                    "market_share": "6%",
+                    "region": "美国"
+                },
+                {
+                    "company": "罗氏",
+                    "market_share": "5.5%",
+                    "region": "瑞士"
+                },
+                {
+                    "company": "强生",
+                    "market_share": "5%",
+                    "region": "美国"
+                },
+                {
+                    "company": "药明康德",
+                    "market_share": "2%",
+                    "region": "中国"
+                },
+                {
+                    "company": "恒瑞医药",
+                    "market_share": "1.8%",
+                    "region": "中国"
+                }
+            ],
+            "key_segments": [
+                {
+                    "name": "肿瘤药物",
+                    "share": "28%"
+                },
+                {
+                    "name": "心血管药物",
+                    "share": "18%"
+                },
+                {
+                    "name": "免疫学药物",
+                    "share": "15%"
+                },
+                {
+                    "name": "神经系统药物",
+                    "share": "12%"
+                },
+                {
+                    "name": "代谢疾病药物",
+                    "share": "10%"
+                },
+                {
+                    "name": "其他",
+                    "share": "17%"
+                }
+            ],
+            "trends": "基因编辑疗法商业化，ADC药物爆发，AI制药降低研发成本，CXO产业链向中国转移",
+            "investment_heat": "高",
+            "last_updated": "2026-01"
+        },
+        {
+            "sector": "新能源汽车",
+            "market_size_2025": "9800亿美元",
+            "market_size_2030": "2.1万亿美元",
+            "cagr_2025_2030": "16.5%",
+            "major_players": [
+                {
+                    "company": "比亚迪",
+                    "market_share": "18%",
+                    "region": "中国"
+                },
+                {
+                    "company": "特斯拉",
+                    "market_share": "15%",
+                    "region": "美国"
+                },
+                {
+                    "company": "大众",
+                    "market_share": "10%",
+                    "region": "德国"
+                },
+                {
+                    "company": "理想汽车",
+                    "market_share": "5%",
+                    "region": "中国"
+                },
+                {
+                    "company": "蔚来汽车",
+                    "market_share": "4%",
+                    "region": "中国"
+                }
+            ],
+            "key_segments": [
+                {
+                    "name": "纯电动(BEV)",
+                    "share": "65%"
+                },
+                {
+                    "name": "插电混动(PHEV)",
+                    "share": "28%"
+                },
+                {
+                    "name": "燃料电池",
+                    "share": "7%"
+                }
+            ],
+            "trends": "固态电池量产临近，智能驾驶L3/L4普及，中国品牌出海提速，充电基础设施完善",
+            "investment_heat": "极高",
+            "last_updated": "2026-02"
+        },
+        {
+            "sector": "网络安全",
+            "market_size_2025": "2230亿美元",
+            "market_size_2030": "4250亿美元",
+            "cagr_2025_2030": "13.8%",
+            "major_players": [
+                {
+                    "company": "Palo Alto Networks",
+                    "market_share": "8%",
+                    "region": "美国"
+                },
+                {
+                    "company": "奇安信",
+                    "market_share": "5%",
+                    "region": "中国"
+                },
+                {
+                    "company": "深信服",
+                    "market_share": "3%",
+                    "region": "中国"
+                },
+                {
+                    "company": "CrowdStrike",
+                    "market_share": "7%",
+                    "region": "美国"
+                },
+                {
+                    "company": "Fortinet",
+                    "market_share": "6%",
+                    "region": "美国"
+                }
+            ],
+            "key_segments": [
+                {
+                    "name": "端点安全",
+                    "share": "25%"
+                },
+                {
+                    "name": "网络安全",
+                    "share": "22%"
+                },
+                {
+                    "name": "云安全",
+                    "share": "20%"
+                },
+                {
+                    "name": "应用安全",
+                    "share": "18%"
+                },
+                {
+                    "name": "数据安全",
+                    "share": "15%"
+                }
+            ],
+            "trends": "零信任架构普及，SASE市场爆发，AI驱动的威胁检测，供应链安全受重视",
+            "investment_heat": "高",
+            "last_updated": "2026-01"
+        },
+        {
+            "sector": "碳中和技术",
+            "market_size_2025": "3200亿美元",
+            "market_size_2030": "7800亿美元",
+            "cagr_2025_2030": "19.5%",
+            "major_players": [
+                {
+                    "company": "三峡集团",
+                    "market_share": "6%",
+                    "region": "中国"
+                },
+                {
+                    "company": "西门子能源",
+                    "market_share": "5%",
+                    "region": "德国"
+                },
+                {
+                    "company": "远景能源",
+                    "market_share": "4%",
+                    "region": "中国"
+                },
+                {
+                    "company": "壳牌",
+                    "market_share": "5%",
+                    "region": "荷兰"
+                },
+                {
+                    "company": "碳中和科技",
+                    "market_share": "2%",
+                    "region": "中国"
+                }
+            ],
+            "key_segments": [
+                {
+                    "name": "CCUS",
+                    "share": "35%"
+                },
+                {
+                    "name": "绿氢",
+                    "share": "30%"
+                },
+                {
+                    "name": "储能",
+                    "share": "25%"
+                },
+                {
+                    "name": "碳交易平台",
+                    "share": "10%"
+                }
+            ],
+            "trends": "CCUS大规模商业化，绿氢成本快速下降，长时储能技术突破，碳市场全球化",
+            "investment_heat": "高",
+            "last_updated": "2026-01"
+        },
+        {
+            "sector": "量子科技",
+            "market_size_2025": "120亿美元",
+            "market_size_2030": "650亿美元",
+            "cagr_2025_2030": "40.2%",
+            "major_players": [
+                {
+                    "company": "IBM",
+                    "market_share": "22%",
+                    "region": "美国"
+                },
+                {
+                    "company": "Google",
+                    "market_share": "18%",
+                    "region": "美国"
+                },
+                {
+                    "company": "本源量子",
+                    "market_share": "8%",
+                    "region": "中国"
+                },
+                {
+                    "company": "IonQ",
+                    "market_share": "12%",
+                    "region": "美国"
+                },
+                {
+                    "company": "国盾量子",
+                    "market_share": "7%",
+                    "region": "中国"
+                }
+            ],
+            "key_segments": [
+                {
+                    "name": "量子计算",
+                    "share": "45%"
+                },
+                {
+                    "name": "量子通信",
+                    "share": "35%"
+                },
+                {
+                    "name": "量子传感",
+                    "share": "20%"
+                }
+            ],
+            "trends": "量子计算进入实用优势阶段，量子通信基础设施建设提速，量子传感器商业化",
+            "investment_heat": "中",
+            "last_updated": "2026-01"
+        },
+        {
+            "sector": "光通信",
+            "market_size_2025": "280亿美元",
+            "market_size_2030": "520亿美元",
+            "cagr_2025_2030": "13.2%",
+            "major_players": [
+                {
+                    "company": "华为",
+                    "market_share": "15%",
+                    "region": "中国"
+                },
+                {
+                    "company": "Finisar",
+                    "market_share": "12%",
+                    "region": "美国"
+                },
+                {
+                    "company": "光讯科技",
+                    "market_share": "8%",
+                    "region": "中国"
+                },
+                {
+                    "company": "中兴通讯",
+                    "market_share": "7%",
+                    "region": "中国"
+                },
+                {
+                    "company": "Lumentum",
+                    "market_share": "10%",
+                    "region": "美国"
+                }
+            ],
+            "key_segments": [
+                {
+                    "name": "400G/800G光模块",
+                    "share": "45%"
+                },
+                {
+                    "name": "硅光芯片",
+                    "share": "25%"
+                },
+                {
+                    "name": "光纤光缆",
+                    "share": "20%"
+                },
+                {
+                    "name": "其他",
+                    "share": "10%"
+                }
+            ],
+            "trends": "800G/1.6T光模块量产，硅光技术成主流，数据中心光互连需求激增",
+            "investment_heat": "中",
+            "last_updated": "2026-02"
+        }
+    ]
+}

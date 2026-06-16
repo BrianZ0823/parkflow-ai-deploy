@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ParkFlow AI 招商经理工作台</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">PF</div>
+          <div>
+            <strong>ParkFlow AI</strong>
+            <span>招商经理工作台</span>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <button class="nav-item active" data-view="dashboard" title="工作台">
+            <span class="icon">⌁</span><span>工作台</span>
+          </button>
+          <button class="nav-item" data-view="leads" title="企业线索">
+            <span class="icon">⌕</span><span>企业线索</span>
+          </button>
+          <button class="nav-item" data-view="profile" title="企业画像">
+            <span class="icon">◇</span><span>企业画像</span>
+          </button>
+          <button class="nav-item" data-view="chain" title="产业链">
+            <span class="icon">⟡</span><span>产业链</span>
+          </button>
+          <button class="nav-item" data-view="crm" title="CRM">
+            <span class="icon">▤</span><span>CRM</span>
+          </button>
+          <button class="nav-item" data-view="writer" title="生成话术">
+            <span class="icon">✎</span><span>生成话术</span>
+          </button>
+          <button class="nav-item" data-view="readiness" title="产品完整度">
+            <span class="icon">✓</span><span>完整度评估</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <span class="status-dot"></span>
+          <div>
+            <strong>MVP 后端可试用</strong>
+            <span>前端与 API 层待补齐</span>
+          </div>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div class="search">
+            <span>⌕</span>
+            <input id="globalSearch" value="未来芯片科技 入驻匹配分析" aria-label="全局搜索" />
+          </div>
+          <div class="top-actions">
+            <button class="icon-button" title="刷新数据">↻</button>
+            <button class="icon-button" title="导出报告">⇩</button>
+            <button class="primary-action">新建招商任务</button>
+          </div>
+        </header>
+
+        <section class="view active" id="dashboard">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">今日招商指挥台</p>
+              <h1>从线索筛选到话术生成的一屏工作流</h1>
+            </div>
+            <div class="date-chip">2026-05-26 · 周二</div>
+          </div>
+
+          <div class="kpi-grid">
+            <article class="metric">
+              <span>候选企业池</span>
+              <strong>188</strong>
+              <em>覆盖半导体、AI、生物医药</em>
+            </article>
+            <article class="metric">
+              <span>CRM 跟进记录</span>
+              <strong>87</strong>
+              <em>12 个需本周推进</em>
+            </article>
+            <article class="metric">
+              <span>知识库文档</span>
+              <strong>27</strong>
+              <em>政策、手册、行业报告</em>
+            </article>
+            <article class="metric attention">
+              <span>当前产品完整度</span>
+              <strong>62%</strong>
+              <em>后端 MVP 成熟，前端缺位</em>
+            </article>
+          </div>
+
+          <div class="dashboard-grid">
+            <article class="panel agent-panel">
+              <div class="panel-title">
+                <div>
+                  <h2>AI 协作台</h2>
+                  <span>Skills + MCP + Legacy Tools</span>
+                </div>
+                <button class="ghost-button">查看上下文</button>
+              </div>
+              <div class="chat-stream">
+                <div class="message user">分析“未来芯片科技”是否适合入驻，并给我下一步跟进话术。</div>
+                <div class="message agent">
+                  <strong>已完成 4 项数据采集</strong>
+                  <p>企业画像、风险评分、产业链缺口、园区资源已合并。建议进入“意向明确”阶段，主推算力补贴与 6 个月免租政策。</p>
+                </div>
+              </div>
+              <div class="tool-row">
+                <button>企业匹配</button>
+                <button>风险评估</button>
+                <button>产业链缺口</button>
+                <button>生成邮件</button>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-title">
+                <div>
+                  <h2>重点线索</h2>
+                  <span>按匹配度和风险排序</span>
+                </div>
+              </div>
+              <div class="lead-list">
+                <div class="lead-row selected">
+                  <strong>未来芯片科技</strong>
+                  <span>AI 芯片 · 西安 · 天使轮</span>
+                  <b>85</b>
+                </div>
+                <div class="lead-row">
+                  <strong>深思智能</strong>
+                  <span>人工智能 · 深圳 · B轮</span>
+                  <b>78</b>
+                </div>
+                <div class="lead-row">
+                  <strong>智谱光电</strong>
+                  <span>光通信 · 武汉 · A轮</span>
+                  <b>74</b>
+                </div>
+              </div>
+            </article>
+
+            <article class="panel risk-card">
+              <div class="panel-title">
+                <div>
+                  <h2>风险雷达</h2>
+                  <span>6 维动态评分</span>
+                </div>
+                <span class="safe-label">低风险</span>
+              </div>
+              <div class="radar">
+                <div class="radar-core">28.5</div>
+              </div>
+              <div class="risk-bars">
+                <span style="--value: 25%">行业风险</span>
+                <span style="--value: 21%">财务健康</span>
+                <span style="--value: 18%">法律风险</span>
+              </div>
+            </article>
+
+            <article class="panel chain-card">
+              <div class="panel-title">
+                <div>
+                  <h2>产业链缺口</h2>
+                  <span>半导体/集成电路</span>
+                </div>
+              </div>
+              <div class="chain-map">
+                <span>硅片</span>
+                <i></i>
+                <span>晶圆制造</span>
+                <i></i>
+                <span class="gap">封装测试</span>
+                <i></i>
+                <span>AI 算力</span>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="leads">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">企业线索池</p>
+              <h1>把自然语言搜索变成可操作候选名单</h1>
+            </div>
+          </div>
+          <div class="table-shell">
+            <div class="filter-row">
+              <button class="active">AI 芯片</button>
+              <button>C轮以上</button>
+              <button>长三角</button>
+              <button>专精特新</button>
+              <button>低风险</button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>企业</th><th>行业</th><th>地区</th><th>规模</th><th>融资</th><th>匹配度</th><th>动作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>未来芯片科技</td><td>AI 芯片</td><td>西安</td><td>8人</td><td>天使轮</td><td><span class="score high">85</span></td><td>加入跟进</td></tr>
+                <tr><td>深思智能</td><td>人工智能</td><td>深圳</td><td>120人</td><td>B轮</td><td><span class="score">78</span></td><td>查看画像</td></tr>
+                <tr><td>智链半导体</td><td>EDA</td><td>上海</td><td>64人</td><td>A轮</td><td><span class="score">76</span></td><td>生成话术</td></tr>
+                <tr><td>云帆量子</td><td>量子科技</td><td>合肥</td><td>42人</td><td>Pre-A轮</td><td><span class="score warn">68</span></td><td>风险复核</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="view" id="profile">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">企业画像</p>
+              <h1>让招商经理看到“为什么值得跟”</h1>
+            </div>
+          </div>
+          <div class="profile-layout">
+            <article class="panel company-card">
+              <h2>未来芯片科技</h2>
+              <p>AI 推理芯片 · 西安 · 天使轮 · 8人</p>
+              <div class="tag-row"><span>天使轮</span><span>AI芯片</span><span>算力生态</span></div>
+              <div class="big-score">85<span>/100</span></div>
+            </article>
+            <article class="panel">
+              <h2>推荐理由</h2>
+              <ul class="clean-list">
+                <li>填补园区 AI 推理芯片环节空白。</li>
+                <li>可匹配小面积研发办公资源，成本压力较低。</li>
+                <li>适合用免租政策和算力补贴提高转化率。</li>
+              </ul>
+            </article>
+            <article class="panel">
+              <h2>风险摘要</h2>
+              <ul class="clean-list">
+                <li>公司年龄较短，团队稳定性需关注。</li>
+                <li>法律风险低，暂无明显诉讼或负面舆情。</li>
+                <li>建议进入小额资源试配和创始人访谈。</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="chain">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">产业链驾驶舱</p>
+              <h1>从图谱缺口反推招商优先级</h1>
+            </div>
+          </div>
+          <div class="chain-workbench">
+            <article class="panel graph-panel">
+              <div class="node n1">上游材料</div>
+              <div class="node n2">芯片设计</div>
+              <div class="node n3 hot">封装测试缺口</div>
+              <div class="node n4">AI 算力设施</div>
+              <div class="node n5">终端应用</div>
+            </article>
+            <article class="panel">
+              <h2>招商建议</h2>
+              <div class="recommendation">优先寻找先进封装测试与算力基础设施企业，和现有芯片设计企业形成互补。</div>
+              <div class="next-actions">
+                <button>生成目标企业清单</button>
+                <button>匹配园区资源</button>
+                <button>生成汇报材料</button>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="crm">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">CRM 跟进</p>
+              <h1>把 Agent 建议沉淀成招商动作</h1>
+            </div>
+          </div>
+          <div class="kanban">
+            <article><h2>初步接触</h2><div>智谱光电<span>下周回访</span></div><div>云帆量子<span>材料待补</span></div></article>
+            <article><h2>洽谈中</h2><div>深思智能<span>政策测算</span></div><div>安芯微纳<span>空间匹配</span></div></article>
+            <article><h2>意向明确</h2><div class="highlight">未来芯片科技<span>准备拜访</span></div></article>
+            <article><h2>已签约</h2><div>智链半导体<span>合同归档</span></div></article>
+          </div>
+        </section>
+
+        <section class="view" id="writer">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">生成话术</p>
+              <h1>招商邮件、拜访提纲和汇报稿一处生成</h1>
+            </div>
+          </div>
+          <div class="writer-layout">
+            <article class="panel controls-panel">
+              <label>目标企业<input value="未来芯片科技" /></label>
+              <label>主推政策<select><option>6个月免租 + 算力补贴</option></select></label>
+              <label>语气<select><option>专业、克制、有依据</option></select></label>
+              <button class="primary-action">生成话术</button>
+            </article>
+            <article class="panel document-panel">
+              <h2>招商邮件草稿</h2>
+              <p>尊敬的未来芯片科技团队：</p>
+              <p>我们关注到贵司在 AI 推理芯片方向的研发积累。光谷智创园当前正在补强“芯片设计 + 算力应用”生态，贵司与园区现有企业具备较强互补性。</p>
+              <p>结合贵司当前阶段，我们建议优先沟通研发办公空间、前 6 个月免租政策以及算力补贴支持。</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="readiness">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">产品完整度评估</p>
+              <h1>后端 MVP 已有骨架，产品化还差前端与服务化</h1>
+            </div>
+          </div>
+          <div class="readiness-grid">
+            <article class="panel maturity">
+              <h2>当前判断</h2>
+              <div class="maturity-score">62%</div>
+              <p>Agent、工具、数据和日志已具备 MVP 验证价值；Web 前端、认证、API 服务、权限、部署和真实外部数据仍未产品化。</p>
+            </article>
+            <article class="panel">
+              <h2>已完成</h2>
+              <ul class="clean-list">
+                <li>Skills 意图识别与数据采集。</li>
+                <li>SQLite、ChromaDB、NetworkX 多数据源。</li>
+                <li>9 个 Legacy 工具与 4 个 MCP 服务。</li>
+                <li>对话日志与应用日志。</li>
+              </ul>
+            </article>
+            <article class="panel">
+              <h2>主要缺口</h2>
+              <ul class="clean-list">
+                <li>没有 Web Dashboard 和用户工作流界面。</li>
+                <li>没有稳定 HTTP API 层供前端调用。</li>
+                <li>外部情报仍是 Mock JSON。</li>
+                <li>缺少账号、权限、审计、部署与测试链路。</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

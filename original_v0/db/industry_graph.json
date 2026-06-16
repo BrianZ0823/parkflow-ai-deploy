@@ -1,0 +1,337 @@
+{
+  "directed": true,
+  "multigraph": false,
+  "graph": {
+    "chain_gaps": {
+      "半导体/集成电路": {
+        "existing": [
+          "芯片设计",
+          "模拟芯片"
+        ],
+        "gaps": [
+          "先进封装测试",
+          "EDA工具",
+          "光刻胶等上游材料"
+        ],
+        "recommendation": "重点引进封装测试企业和半导体材料企业，补全制造环节"
+      },
+      "人工智能": {
+        "existing": [
+          "计算机视觉",
+          "NLP"
+        ],
+        "gaps": [
+          "AI算力基础设施",
+          "AI安全",
+          "大模型训练平台"
+        ],
+        "recommendation": "引进算力中心运营商和AI安全企业"
+      },
+      "生物医药": {
+        "existing": [
+          "创新药研发"
+        ],
+        "gaps": [
+          "CRO/CDMO服务",
+          "临床试验管理",
+          "药品冷链物流"
+        ],
+        "recommendation": "引进CRO服务企业，建设临床试验中心"
+      }
+    }
+  },
+  "nodes": [
+    {
+      "level": "核心",
+      "park_priority": "高",
+      "id": "半导体/集成电路"
+    },
+    {
+      "level": "核心",
+      "park_priority": "高",
+      "id": "人工智能"
+    },
+    {
+      "level": "核心",
+      "park_priority": "高",
+      "id": "生物医药"
+    },
+    {
+      "level": "关联",
+      "park_priority": "中",
+      "id": "新能源汽车"
+    },
+    {
+      "level": "关联",
+      "park_priority": "中",
+      "id": "新能源/储能"
+    },
+    {
+      "level": "关联",
+      "park_priority": "中",
+      "id": "先进制造/智能制造"
+    },
+    {
+      "level": "关联",
+      "park_priority": "中",
+      "id": "医疗器械"
+    },
+    {
+      "level": "关联",
+      "park_priority": "中",
+      "id": "新材料"
+    },
+    {
+      "level": "关联",
+      "park_priority": "中",
+      "id": "物联网/传感器"
+    },
+    {
+      "level": "关联",
+      "park_priority": "中",
+      "id": "机器人"
+    },
+    {
+      "level": "关联",
+      "park_priority": "中",
+      "id": "大数据/云计算"
+    },
+    {
+      "level": "关联",
+      "park_priority": "中",
+      "id": "光电子/激光"
+    },
+    {
+      "level": "外围",
+      "park_priority": "低",
+      "id": "航空航天"
+    },
+    {
+      "level": "外围",
+      "park_priority": "低",
+      "id": "金融科技"
+    },
+    {
+      "level": "外围",
+      "park_priority": "低",
+      "id": "网络安全"
+    },
+    {
+      "level": "外围",
+      "park_priority": "低",
+      "id": "环保/节能"
+    },
+    {
+      "level": "外围",
+      "park_priority": "低",
+      "id": "数字文创"
+    },
+    {
+      "level": "外围",
+      "park_priority": "低",
+      "id": "现代农业科技"
+    },
+    {
+      "level": "外围",
+      "park_priority": "低",
+      "id": "教育科技"
+    },
+    {
+      "level": "外围",
+      "park_priority": "低",
+      "id": "跨境电商/供应链"
+    },
+    {
+      "level": "上游原材料",
+      "id": "硅片/晶圆"
+    },
+    {
+      "level": "上游工具",
+      "id": "EDA软件"
+    },
+    {
+      "level": "上游原材料",
+      "id": "光刻胶/化学品"
+    },
+    {
+      "level": "中游制造",
+      "id": "封装测试"
+    },
+    {
+      "level": "下游应用",
+      "id": "消费电子"
+    },
+    {
+      "level": "下游应用",
+      "id": "汽车电子"
+    },
+    {
+      "level": "上游原材料",
+      "id": "碳纤维/复合材料"
+    }
+  ],
+  "links": [
+    {
+      "relation": "制造环节",
+      "source": "半导体/集成电路",
+      "target": "封装测试"
+    },
+    {
+      "relation": "算力提供",
+      "source": "半导体/集成电路",
+      "target": "人工智能"
+    },
+    {
+      "relation": "核心器件",
+      "source": "半导体/集成电路",
+      "target": "物联网/传感器"
+    },
+    {
+      "relation": "智能大脑",
+      "source": "人工智能",
+      "target": "机器人"
+    },
+    {
+      "relation": "自动驾驶",
+      "source": "人工智能",
+      "target": "新能源汽车"
+    },
+    {
+      "relation": "AI辅助诊断",
+      "source": "人工智能",
+      "target": "医疗器械"
+    },
+    {
+      "relation": "智能决策",
+      "source": "人工智能",
+      "target": "先进制造/智能制造"
+    },
+    {
+      "relation": "诊断试剂",
+      "source": "生物医药",
+      "target": "医疗器械"
+    },
+    {
+      "relation": "动力电池",
+      "source": "新能源/储能",
+      "target": "新能源汽车"
+    },
+    {
+      "relation": "关键材料",
+      "source": "新材料",
+      "target": "半导体/集成电路"
+    },
+    {
+      "relation": "电池材料",
+      "source": "新材料",
+      "target": "新能源/储能"
+    },
+    {
+      "relation": "航天材料",
+      "source": "新材料",
+      "target": "航空航天"
+    },
+    {
+      "relation": "感知层",
+      "source": "物联网/传感器",
+      "target": "先进制造/智能制造"
+    },
+    {
+      "relation": "环境监测",
+      "source": "物联网/传感器",
+      "target": "环保/节能"
+    },
+    {
+      "relation": "数据与算力",
+      "source": "大数据/云计算",
+      "target": "人工智能"
+    },
+    {
+      "relation": "数据分析",
+      "source": "大数据/云计算",
+      "target": "金融科技"
+    },
+    {
+      "relation": "光刻设备",
+      "source": "光电子/激光",
+      "target": "半导体/集成电路"
+    },
+    {
+      "relation": "激光加工",
+      "source": "光电子/激光",
+      "target": "先进制造/智能制造"
+    },
+    {
+      "relation": "安全保障",
+      "source": "网络安全",
+      "target": "大数据/云计算"
+    },
+    {
+      "relation": "原材料供应",
+      "source": "硅片/晶圆",
+      "target": "半导体/集成电路"
+    },
+    {
+      "relation": "设计工具",
+      "source": "EDA软件",
+      "target": "半导体/集成电路"
+    },
+    {
+      "relation": "制造材料",
+      "source": "光刻胶/化学品",
+      "target": "半导体/集成电路"
+    },
+    {
+      "relation": "终端应用",
+      "source": "封装测试",
+      "target": "消费电子"
+    },
+    {
+      "relation": "终端应用",
+      "source": "封装测试",
+      "target": "汽车电子"
+    },
+    {
+      "relation": "结构材料",
+      "source": "碳纤维/复合材料",
+      "target": "航空航天"
+    }
+  ],
+  "chain_gaps": {
+    "半导体/集成电路": {
+      "existing": [
+        "芯片设计",
+        "模拟芯片"
+      ],
+      "gaps": [
+        "先进封装测试",
+        "EDA工具",
+        "光刻胶等上游材料"
+      ],
+      "recommendation": "重点引进封装测试企业和半导体材料企业，补全制造环节"
+    },
+    "人工智能": {
+      "existing": [
+        "计算机视觉",
+        "NLP"
+      ],
+      "gaps": [
+        "AI算力基础设施",
+        "AI安全",
+        "大模型训练平台"
+      ],
+      "recommendation": "引进算力中心运营商和AI安全企业"
+    },
+    "生物医药": {
+      "existing": [
+        "创新药研发"
+      ],
+      "gaps": [
+        "CRO/CDMO服务",
+        "临床试验管理",
+        "药品冷链物流"
+      ],
+      "recommendation": "引进CRO服务企业，建设临床试验中心"
+    }
+  }
+}

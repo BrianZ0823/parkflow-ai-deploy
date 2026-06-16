@@ -1,0 +1,23 @@
+# LLM和Embeddings
+openai>=1.0.0
+
+# 向量数据库
+chromadb>=0.4.0
+
+# 数据处理
+numpy>=1.24.0
+networkx>=3.0
+
+# 配置文件
+PyYAML>=6.0
+
+# MCP协议
+mcp>=0.9.0
+
+# 类型提示支持
+typing-extensions>=4.5.0
+
+# AI 可观测性 (Phoenix)
+# 方式A - 完整版（含本地 Web UI）: pip install arize-phoenix openinference-instrumentation-openai
+# 方式B - 轻量版（连接远程 Phoenix）: pip install arize-phoenix-otel openinference-instrumentation-openai
+openinference-instrumentation-openai>=0.1.0

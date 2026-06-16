@@ -19,10 +19,22 @@ async function downloadFile(url, body, filename) {
     body: JSON.stringify(body),
   });
   if (!resp.ok) {
-    const err = await resp.json().catch(() => ({ error: `HTTP ${resp.status}` }));
-    throw new Error(err.error || `导出失败 (${resp.status})`);
+    let errMsg = `导出失败 (${resp.status})`;
+    try {
+      const err = await resp.json();
+      if (err && err.error) errMsg = err.error;
+    } catch (_) {}
+    throw new Error(errMsg);
+  }
+  const contentType = resp.headers.get("Content-Type") || "";
+  if (contentType.includes("application/json")) {
+    const json = await resp.json();
+    throw new Error(json.error || "导出服务返回异常");
   }
   const blob = await resp.blob();
+  if (!blob || blob.size === 0) {
+    throw new Error("导出的文件为空，请重试");
+  }
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = filename;
@@ -61,7 +73,13 @@ const ui = {
   nextActions: $("#nextActions"),
   dialog: $("#sourceDialog"),
   dialogClose: $("#dialogClose"),
-  voiceInputButton: $("#voiceInputButton"),
+  homeHint: $("#homeHint"),
+  shelf: $("#shortlistShelf"),
+  shelfTab: $("#shelfTab"),
+  shelfCount: $("#shelfCount"),
+  shelfList: $("#shelfList"),
+  shelfCompare: $("#shelfCompare"),
+  shelfBatchOutline: $("#shelfBatchOutline"),
 };
 
 const state = {
@@ -82,6 +100,10 @@ const state = {
   lastMaterial: null,
   activityItems: [],
   streamingText: "",
+  jsonBuffer: "",
+  shelfSelection: new Set(),
+  receivedTextDelta: false,
+  debugMode: false,
   liveTimer: null,
   liveTick: 0,
   currentAbort: null,
@@ -338,6 +360,13 @@ function deleteThread(threadId) {
 function startThreadFromGoal(goal) {
   const task = String(goal || "").trim();
   if (!task) return;
+  const missing = detectMissingPlaceholder(task);
+  if (missing) {
+    showHomeHint(missing);
+    ui.homeInput.focus();
+    return;
+  }
+  showHomeHint("");
   resetThread({ showHome: false });
   state.currentGoal = task;
   showWorkspace();
@@ -356,6 +385,29 @@ function escapeHtml(value) {
 function compactText(value, max = 160) {
   const text = String(value || "").replace(/\s+/g, " ").trim();
   return text.length > max ? `${text.slice(0, max)}...` : text;
+}
+
+function detectMissingPlaceholder(task) {
+  const text = task || "";
+  if (/【企业名称】/.test(text)) return "请将【企业名称】替换为具体企业名称，例如：分析垂直起降动力有限公司是否适合重点推进。";
+  if (/【产业方向】/.test(text)) return "请将【产业方向】替换为目标产业，例如：围绕低空经济梳理可优先推进的招商机会。";
+  if (/【.+?】/.test(text)) return "请将【……】替换为具体内容后再开始分析。";
+  return "";
+}
+
+function showHomeHint(message) {
+  const el = ui.homeHint;
+  if (!el) return;
+  if (!message) {
+    el.classList.remove("visible");
+    el.textContent = "";
+    return;
+  }
+  el.innerHTML = `<span class="hint-icon">!</span> ${message}`;
+  el.classList.add("visible");
+  el.addEventListener("transitionend", () => {
+    if (!message) el.innerHTML = "";
+  }, { once: true });
 }
 
 function showToast(message, tone = "default") {
@@ -668,7 +720,6 @@ function messageActionsHtml(role) {
     : [
         ["copy", "复制"],
         ["share", "分享"],
-        ["speak", "朗读"],
         ["retry", "重试"],
         ["delete", "删除"],
       ];
@@ -784,6 +835,19 @@ function resetWorkspaceState() {
   state.lastMaterial = null;
   state.activityItems = [];
   state.streamingText = "";
+  state.jsonBuffer = "";
+  state.receivedTextDelta = false;
+}
+
+function initDebugPanel() {
+  const panel = document.getElementById("debugPanel");
+  if (!panel) return;
+  if (window.location.search.includes("debug=1")) {
+    state.debugMode = true;
+    panel.hidden = false;
+    const closeBtn = document.getElementById("debugClose");
+    if (closeBtn) closeBtn.addEventListener("click", () => { panel.hidden = true; state.debugMode = false; });
+  }
 }
 
 function truncateThreadAt(messageElement) {
@@ -869,27 +933,6 @@ function retryMessage(item) {
   runMission(text);
 }
 
-function speakMessage(item) {
-  let text = getMessageText(item);
-  if (!text) return;
-  text = text.replace(/[\s\n]+/g, " ").replace(/[•·•]/g, "").trim().substring(0, 2000);
-  if (!("speechSynthesis" in window)) {
-    showToast("当前浏览器不支持朗读", "warn");
-    return;
-  }
-  window.speechSynthesis.cancel();
-  const voices = window.speechSynthesis.getVoices();
-  const preferred = voices.find((v) => v.lang.startsWith("zh-CN") && v.name.includes("Microsoft"))
-    || voices.find((v) => v.lang.startsWith("zh-CN"))
-    || voices.find((v) => v.lang.startsWith("zh"));
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.voice = preferred || null;
-  utterance.lang = "zh-CN";
-  utterance.rate = 0.9;
-  utterance.pitch = 1.0;
-  window.speechSynthesis.speak(utterance);
-  showToast("正在朗读");
-}
 
 function bindMessageActions(root = document) {
   root.querySelectorAll("[data-message-action]").forEach((button) => {
@@ -907,7 +950,6 @@ function bindMessageActions(root = document) {
       if (action === "edit") editMessage(item);
       if (action === "retry") retryMessage(item);
       if (action === "delete") deleteMessage(item);
-      if (action === "speak") speakMessage(item);
     });
   });
 }
@@ -1130,6 +1172,80 @@ function renderAgentText(text) {
   host.innerHTML = formatBlocks(text);
   bindMessageActions(state.currentAgentMessage);
   scrollThread();
+}
+
+function handleStreamEvent(event) {
+  if (event.event === "agent_state") {
+    stopLiveProgress(false);
+    if (event.mode === "conversation") {
+      setConversationMode(event.detail || event.label || "正在回复");
+    } else {
+      setLiveStatus(event.label || event.detail || "正在分析");
+    }
+  }
+  if (event.event === "stage" || event.event === "status") {
+    stopLiveProgress(false);
+    setLiveStatus(event.label || event.detail || "正在分析");
+  }
+  if (event.event === "text_delta") {
+    state.receivedTextDelta = true;
+    state.jsonBuffer += event.content || "";
+    if (state.debugMode) updateDebugPanel(event.content);
+  }
+  if (event.event === "artifact") {
+    state.jsonBuffer = "";
+    state.streamingText = "";
+    if (event.type === "stats") {
+      renderStats(event.stats || {});
+    } else {
+      const normalized = normalizeResponseToArtifact(event);
+      renderReport(normalized);
+    }
+    if (state.debugMode && event.report) updateDebugPanel(null, event.report);
+  }
+  if (event.event === "done") {
+    setAgentState("ready");
+    finishActivities();
+    if (!state.report && state.receivedTextDelta) {
+      state.jsonBuffer = "";
+      renderAgentText("结果解析失败，请重试");
+    }
+    state.receivedTextDelta = false;
+  }
+}
+
+function normalizeResponseToArtifact(payload) {
+  const report = payload.report || {};
+  const cleaned = { ...payload };
+  if (cleaned.report) {
+    cleaned.report = { ...cleaned.report };
+    delete cleaned.report.sources_used;
+    delete cleaned.report.draft;
+  }
+  cleaned.exportData = {
+    verdict: report.verdict || "",
+    summary: report.summary || "",
+    confidence: report.confidence || "",
+    metrics: report.metrics || {},
+    sections: report.sections || [],
+    policy_matches: report.policy_matches || [],
+    action_plan: report.action_plan || [],
+    ranked_companies: report.ranked_companies || [],
+  };
+  return cleaned;
+}
+
+function updateDebugPanel(rawChunk, parsedReport) {
+  const panel = document.getElementById("debugPanel");
+  if (!panel) return;
+  if (rawChunk) {
+    const rawEl = panel.querySelector(".debug-raw");
+    if (rawEl) rawEl.textContent += rawChunk;
+  }
+  if (parsedReport) {
+    const parsedEl = panel.querySelector(".debug-parsed");
+    if (parsedEl) parsedEl.textContent = JSON.stringify(parsedReport, null, 2);
+  }
 }
 
 function normalizeCandidates(rows = [], report = {}) {
@@ -1442,6 +1558,73 @@ function renderShortlistInsight() {
   `;
 }
 
+function renderShortlistShelf() {
+  const el = ui.shelfList;
+  const count = state.shortlist.length;
+  if (ui.shelfCount) ui.shelfCount.textContent = count || "";
+  state.shelfSelection = new Set([...state.shelfSelection].filter((i) => i < count));
+  if (!el) return;
+  if (!count) {
+    el.innerHTML = `<p class="shelf-empty">加入企业后，这里会列出准备继续推进的线索。</p>`;
+    if (ui.shelfCompare) { ui.shelfCompare.disabled = true; ui.shelfCompare.textContent = "对比企业"; }
+    return;
+  }
+  const selectedCount = state.shelfSelection.size;
+  el.innerHTML = state.shortlist
+    .map((item, index) => {
+      const checked = state.shelfSelection.has(index) ? "checked" : "";
+      return `
+      <div class="shelf-item ${checked ? "selected" : ""}" data-shelf-index="${index}">
+        <label class="shelf-check">
+          <input type="checkbox" data-shelf-select="${index}" ${checked}>
+        </label>
+        <strong>${escapeHtml(item.name)}</strong>
+        <div class="shelf-item-meta">${escapeHtml([item.industry, item.subIndustry].filter(Boolean).join(" / ") || "赛道待确认")} · 匹配分 ${escapeHtml(item.score || "-")}</div>
+        <div class="shelf-item-actions">
+          <button type="button" data-shelf-focus="${index}">查看</button>
+          <button type="button" data-shelf-outline="${index}">拜访提纲</button>
+          <button type="button" class="shelf-remove" data-shelf-remove="${index}">移出</button>
+        </div>
+      </div>`;
+    }).join("");
+  if (ui.shelfCompare) {
+    const enough = selectedCount >= 2;
+    ui.shelfCompare.disabled = !enough;
+    ui.shelfCompare.textContent = enough ? `对比已选 ${selectedCount} 家` : selectedCount === 1 ? "请再选 1 家" : "勾选企业后对比";
+  }
+  bindShortlistShelfItems();
+}
+
+function bindShortlistShelfItems() {
+  const root = ui.shelfList;
+  if (!root) return;
+  root.querySelectorAll("[data-shelf-select]").forEach((cb) => {
+    cb.addEventListener("change", () => {
+      const index = Number(cb.dataset.shelfSelect);
+      if (cb.checked) state.shelfSelection.add(index);
+      else state.shelfSelection.delete(index);
+      renderShortlistShelf();
+    });
+  });
+  root.querySelectorAll("[data-shelf-focus]").forEach((btn) => {
+    btn.addEventListener("click", () => focusShortlistItem(Number(btn.dataset.shelfFocus)));
+  });
+  root.querySelectorAll("[data-shelf-outline]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const item = state.shortlist[Number(btn.dataset.shelfOutline)];
+      if (!item) return;
+      state.selectedCompanyIndex = state.candidates.findIndex((c) => c.name === item.name);
+      updateInsight();
+      generateMaterial("outline", "", { scope: "company" });
+    });
+  });
+  root.querySelectorAll("[data-shelf-remove]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      routeAction(ACTION_TYPES.local, "remove_from_shortlist", { index: Number(btn.dataset.shelfRemove) });
+    });
+  });
+}
+
 function renderActiveCompanyInsight(active) {
   return `
     <div class="active-company-card">
@@ -1597,6 +1780,7 @@ function updateInsight() {
 
   ui.riskList.innerHTML = renderRiskInsight();
   renderNextActions();
+  renderShortlistShelf();
   updateCommandContext();
   queuePersistThread();
 }
@@ -1973,8 +2157,8 @@ function compareActionPlan(best, items = []) {
   return actions;
 }
 
-function shortlistComparisonArtifact() {
-  const items = state.shortlist.slice(0, 4);
+function shortlistComparisonArtifact(items) {
+  if (!items || !items.length) items = state.shortlist.slice(0, 4);
   const best = compareWinner(items);
   const questions = compareOpenQuestions(items);
   const actions = compareActionPlan(best, items);
@@ -2050,6 +2234,39 @@ function shortlistComparisonArtifact() {
       </div>
     </section>
   `;
+}
+
+function renderShortlistComparison(selectedIndices) {
+  const indices = (selectedIndices || [...state.shelfSelection]).filter(
+    (i) => Number.isFinite(i) && i >= 0 && i < state.shortlist.length
+  );
+  if (indices.length < 2) {
+    showToast("请至少选择两家企业后再对比", "warn");
+    return;
+  }
+  const items = indices.map((i) => state.shortlist[i]);
+  const best = compareWinner(items);
+  setAgentState("ready");
+  ui.agentStatus.textContent = "已形成对比";
+  const agentMessage = createAgentMessage();
+  markActivity("形成优先级", "对比清单中企业的匹配度、风险和推进动作。", "done");
+  finishActivities();
+  const answer = `已基于跟进清单对比 ${items.length} 家企业。`;
+  renderAgentText(answer);
+  addHistory("assistant", `${answer}优先推进：${best?.name || "待确认"}。`);
+  agentMessage.querySelector(".artifact-slot").innerHTML = shortlistComparisonArtifact(items);
+  bindArtifactActions(agentMessage);
+  state.report = {
+    verdict: `建议优先推进${best?.name || "待确认"}`,
+    summary: answer,
+    ranked_companies: items,
+    sections: [
+      { id: "compare", title: "企业对比分析", body: "基于匹配度、承载能力、成长潜力和风险安全四个维度综合排序。" },
+    ],
+    action_plan: compareActionPlan(best, items),
+  };
+  state.context = { evidence: [] };
+  updateInsight();
 }
 
 function renderShortlistComparisonMessage() {
@@ -2407,13 +2624,12 @@ function bindArtifactActions(root) {
       button.disabled = true;
       button.textContent = "导出中...";
       try {
-        const companyName = (state.candidates[0]?.name || "企业").replace(/[\\/:*?"<>|]/g, "");
-        const ext = fmt === "pdf" ? "pdf" : "docx";
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
         await downloadFile("/api/export/report", {
           report: state.report,
           context: state.context || {},
           format: fmt,
-        }, `招商研判报告_${companyName}.${ext}`);
+        }, `园区重点招商企业推荐建议_${dateStr}.${fmt === "pdf" ? "pdf" : "docx"}`);
       } catch (err) {
         alert(err.message);
       } finally {
@@ -2430,13 +2646,24 @@ function bindArtifactActions(root) {
       button.disabled = true;
       button.textContent = "导出中...";
       try {
-        const title = (state.lastMaterial.title || "招商材料").replace(/[\\/:*?"<>|]/g, "");
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+        const materialType = state.lastMaterial.type || "outline";
+        const company = state.lastMaterial.company_name || state.lastMaterial.audience || "";
         const ext = fmt === "pdf" ? "pdf" : "docx";
+        let filename;
+        if (materialType === "outline" && company) {
+          filename = `关于赴${company}开展招商拜访的提纲_${dateStr}.${ext}`;
+        } else if (materialType === "wechat" && company) {
+          filename = `${company}招商跟进话术_${dateStr}.${ext}`;
+        } else {
+          const title = (state.lastMaterial.title || "招商材料").replace(/[\\/:*?"<>|]/g, "");
+          filename = `${title}_${dateStr}.${ext}`;
+        }
         await downloadFile("/api/export/material", {
           material: state.lastMaterial,
-          type: state.lastMaterial.type || "outline",
+          type: materialType,
           format: fmt,
-        }, `${title}.${ext}`);
+        }, filename);
       } catch (err) {
         alert(err.message);
       } finally {
@@ -2477,6 +2704,8 @@ async function generateMaterial(type, taskOverride = "", options = {}) {
       signal: state.currentAbort.signal,
     });
     const material = data.material || {};
+    material.type = type;
+    material.company_name = active?.name || "";
     state.lastMaterial = material;
     const content = Array.isArray(material.content) ? material.content : [material.content || ""];
     finishActivities();
@@ -2561,18 +2790,7 @@ async function analyzeWithStream(task, signal) {
     for (const line of lines) {
       if (!line.trim()) continue;
       const event = JSON.parse(line);
-      if (event.event === "agent_state") {
-        stopLiveProgress(false);
-        if (event.mode === "conversation") {
-          setConversationMode(event.detail || event.label || "正在回复");
-        } else {
-          setLiveStatus(event.label || event.detail || "正在分析");
-        }
-      }
-      if (event.event === "stage") {
-        stopLiveProgress(false);
-        setLiveStatus(event.label || event.detail || "正在分析");
-      }
+      handleStreamEvent(event);
       if (event.event === "chunk") {
         stopLiveProgress(false);
         setLiveStatus("正在整理回复");
@@ -2605,6 +2823,7 @@ async function analyzeWithStream(task, signal) {
         renderReport(event);
       }
       if (event.event === "error") {
+        state.jsonBuffer = "";
         const error = new Error(event.error || "任务没有完成");
         error.payload = event;
         throw error;
@@ -2615,6 +2834,11 @@ async function analyzeWithStream(task, signal) {
 }
 
 async function runMission(task) {
+  const missing = detectMissingPlaceholder(task);
+  if (missing) {
+    showToast(missing, "warn");
+    return null;
+  }
   showWorkspace();
   if (isMaterialRequest(task) && state.report) {
     addMessage("user", task);
@@ -2649,6 +2873,8 @@ async function runMission(task) {
   ui.agentStatus.textContent = "正在分析";
   ui.goalUnderstanding.textContent = state.currentGoal || task;
   state.streamingText = "";
+  state.jsonBuffer = "";
+  state.receivedTextDelta = false;
   state.stopRequested = false;
   state.currentAbort = new AbortController();
   addMessage("user", task);
@@ -2751,51 +2977,13 @@ function bindCommandActions(root = document) {
   });
 }
 
-function setupVoiceInput() {
-  if (!ui.voiceInputButton) return;
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    ui.voiceInputButton.disabled = false;
-    ui.voiceInputButton.addEventListener("click", () => showToast("当前浏览器不支持语音输入，可继续使用键盘输入", "warn"));
-    return;
-  }
-  const recognition = new SpeechRecognition();
-  recognition.lang = "zh-CN";
-  recognition.interimResults = true;
-  recognition.continuous = false;
-  let listening = false;
-  recognition.onstart = () => {
-    listening = true;
-    ui.voiceInputButton.classList.add("is-listening");
-    ui.voiceInputButton.querySelector("span").textContent = "聆听";
-  };
-  recognition.onend = () => {
-    listening = false;
-    ui.voiceInputButton.classList.remove("is-listening");
-    ui.voiceInputButton.querySelector("span").textContent = "语音";
-  };
-  recognition.onerror = () => showToast("语音输入未能识别，请重试", "warn");
-  recognition.onresult = (event) => {
-    const transcript = [...event.results].map((result) => result[0]?.transcript || "").join("").trim();
-    if (transcript) {
-      ui.input.value = transcript;
-      ui.input.dispatchEvent(new Event("input"));
-    }
-  };
-  ui.voiceInputButton.addEventListener("click", () => {
-    if (listening) {
-      recognition.stop();
-      return;
-    }
-    recognition.start();
-  });
-}
 
 function bindControls() {
   ui.homeForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const task = ui.homeInput.value.trim();
     if (!task) return;
+    showHomeHint("");
     ui.homeInput.value = "";
     startThreadFromGoal(task);
   });
@@ -2807,8 +2995,26 @@ function bindControls() {
     }
   });
 
+  ui.homeInput.addEventListener("input", () => {
+    if (ui.homeHint?.classList.contains("visible")) {
+      showHomeHint("");
+    }
+  });
+
   document.querySelectorAll("[data-home-prompt]").forEach((button) => {
-    button.addEventListener("click", () => startThreadFromGoal(button.dataset.homePrompt || ""));
+    button.addEventListener("click", () => {
+      const prompt = button.dataset.homePrompt || "";
+      if (!prompt) return;
+      if (document.body.dataset.view === "workspace") {
+        ui.input.value = prompt;
+        ui.input.focus();
+        ui.input.style.height = "auto";
+        ui.input.style.height = `${Math.min(108, ui.input.scrollHeight)}px`;
+      } else {
+        ui.homeInput.value = prompt;
+        ui.homeInput.focus();
+      }
+    });
   });
 
   ui.form.addEventListener("submit", async (event) => {
@@ -2845,8 +3051,35 @@ function bindControls() {
   bindPromptButtons(document);
   bindCommandActions(document);
   bindMessageActions(document);
-  setupVoiceInput();
+  if (ui.shelfTab) {
+    ui.shelfTab.addEventListener("click", () => {
+      const expanded = ui.shelf.dataset.expanded === "true";
+      ui.shelf.dataset.expanded = expanded ? "false" : "true";
+    });
+    ui.shelf.addEventListener("mouseenter", () => {
+      if (ui.shelf.dataset.expanded !== "true") ui.shelf.dataset.expanded = "true";
+    });
+    ui.shelf.addEventListener("mouseleave", () => {
+      if (ui.shelf.dataset.expanded === "true") ui.shelf.dataset.expanded = "false";
+    });
+  }
+  if (ui.shelfCompare) {
+    ui.shelfCompare.addEventListener("click", () => {
+      const selected = [...state.shelfSelection].sort();
+      if (selected.length < 2) return;
+      renderShortlistComparison(selected);
+    });
+  }
+  if (ui.shelfBatchOutline) {
+    ui.shelfBatchOutline.addEventListener("click", () => {
+      if (!state.shortlist.length) return;
+      const names = state.shortlist.map((c) => c.name).slice(0, 3).join("、");
+      ui.input.value = `基于跟进清单中的 ${names}，生成一份招商拜访提纲。`;
+      ui.input.focus();
+    });
+  }
   updateCommandContext();
+  renderShortlistShelf();
 }
 
 async function checkHealth() {
@@ -2875,3 +3108,4 @@ showHomeView();
 bindControls();
 checkHealth();
 loadStats();
+initDebugPanel();
