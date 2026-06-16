@@ -1013,68 +1013,17 @@ function addMessage(role, content = "") {
   return item;
 }
 
-function createAgentMessage(conversational = false) {
+function createAgentMessage() {
   const item = addMessage("agent", "");
   const body = item.querySelector(".message-body");
-  if (conversational) {
-    body.innerHTML = `
-      <div class="message-meta">ParkFlow<span>正在回复</span></div>
-      <div class="live-status"><i aria-hidden="true"></i><span>正在理解你的问题</span></div>
-      <div class="message-content agent-text"><p>我正在整理回复，请稍候。</p></div>
-      ${messageActionsHtml("agent")}
-    `;
-    bindMessageActions(item);
-    state.currentAgentMessage = item;
-    return item;
-  }
   body.innerHTML = `
-    <div class="message-meta">ParkFlow<span>正在分析</span></div>
-    <div class="activity-timeline collapsed" id="activeTimeline">
-      <button type="button" class="activity-toggle">
-        <strong>分析过程</strong>
-        <span>请求已提交</span>
-      </button>
-      <div class="activity-items"></div>
-    </div>
-    <div class="live-status">
-      <i aria-hidden="true"></i>
-      <span>正在整理招商目标</span>
-    </div>
-    <div class="workstream-panel" id="activeWorkstream">
-      <div class="workstream-head">
-        <strong>正在推进本轮分析</strong>
-        <button type="button" data-stop-run>停止本轮</button>
-      </div>
-      <div class="workstream-grid">
-        <div><span>当前动作</span><strong data-work-current>整理招商目标</strong></div>
-        <div><span>企业线索</span><strong data-work-companies>待返回</strong></div>
-        <div><span>支撑资料</span><strong data-work-sources>待返回</strong></div>
-      </div>
-      <div class="workstream-progress"><i></i></div>
-      <div class="workstream-actions">
-        <button type="button" data-supplement="补充条件：请优先考虑租金承载力强、风险低的企业。">补充条件</button>
-        <button type="button" data-supplement="补充条件：请排除高风险企业，并说明排除原因。">排除高风险</button>
-      </div>
-    </div>
-    <div class="message-content agent-text"><p>我正在根据你的目标整理分析思路，资料返回后会持续更新。</p></div>
+    <div class="message-meta">ParkFlow<span>正在回复</span></div>
+    <div class="live-status"><i aria-hidden="true"></i><span>正在处理</span></div>
+    <div class="message-content agent-text"></div>
     <div class="artifact-slot"></div>
     ${messageActionsHtml("agent")}
   `;
-  const timeline = body.querySelector(".activity-timeline");
-  body.querySelector(".activity-toggle").addEventListener("click", () => timeline.classList.toggle("collapsed"));
-  body.querySelector("[data-stop-run]")?.addEventListener("click", stopCurrentRun);
-  body.querySelectorAll("[data-supplement]").forEach((button) => {
-    button.addEventListener("click", () => {
-      if (state.currentAbort) stopCurrentRun();
-      ui.input.value = button.dataset.supplement || "";
-      ui.input.focus();
-    });
-  });
   state.currentAgentMessage = item;
-  state.activityItems = [];
-  markActivity("请求已提交", "已收到任务，准备分析。", "done");
-  markActivity("正在分析", "正在连接资料与模型。", "active");
-  startLiveProgress();
   bindMessageActions(item);
   return item;
 }
@@ -1141,9 +1090,7 @@ function stopLiveProgress(markDone = true) {
     window.clearInterval(state.liveTimer);
     state.liveTimer = null;
   }
-  if (markDone) {
-    setLiveStatus(state._isConversationalTask ? "已回复" : "分析完成");
-  }
+  if (markDone) setLiveStatus("已回复");
 }
 
 function activitySummary() {
@@ -2900,18 +2847,6 @@ async function runMission(task) {
   }
   showWorkspace();
 
-  // Quick fallback: handle purely local simple questions (math, greetings)
-  // If it needs the LLM, fall through to the normal flow below
-  if (isSimpleQuestion(task)) {
-    const answer = quickAnswerFallback(task);
-    if (answer) {
-      addMessage("user", task);
-      addHistory("user", task);
-      renderPlainAnswer(answer);
-      return { ok: true, intent: "simple_chat" };
-    }
-  }
-
   if (isMaterialRequest(task) && state.report) {
     addMessage("user", task);
     addHistory("user", task);
@@ -2929,13 +2864,12 @@ async function runMission(task) {
   }
 
   // Reset stale context when a new independent question arrives
-  const isPlainChat = isSimpleQuestion(task) || isMetaConversation(task);
   const isContextual = isContextualFollowup(task);
-  if (!isContextual && !isPlainChat) {
+  if (!isContextual && !isMetaConversation(task)) {
     state.currentGoal = task;
     state.selectedCompanyIndex = -1;
   }
-  if (isPlainChat || (!isContextual && !/推荐|筛选|分析|评估|生成|企业|公司|产业|政策/.test(task))) {
+  if (isMetaConversation(task) || (!isContextual && !/推荐|筛选|分析|评估|生成|企业|公司|产业|政策/.test(task))) {
     state.report = null;
     state.context = null;
     state.sources = [];
@@ -2944,12 +2878,9 @@ async function runMission(task) {
     state.lastSummary = "";
   }
   setAgentState("running");
-  const status = taskStatusFor(task);
-  const isPlain = isPlainChat || isMetaConversation(task);
-  ui.agentStatus.textContent = status.label;
+  ui.agentStatus.textContent = "正在分析";
   ui.goalUnderstanding.textContent = state.currentGoal || task;
-  setLiveStatus(status.detail);
-  state._isConversationalTask = isPlain;
+  setLiveStatus("正在处理你的请求");
   state.streamingText = "";
   state.jsonBuffer = "";
   state.receivedTextDelta = false;
@@ -2957,7 +2888,7 @@ async function runMission(task) {
   state.currentAbort = new AbortController();
   addMessage("user", task);
   addHistory("user", task);
-  createAgentMessage(isPlainChat);
+  createAgentMessage();
   try {
     let payload;
     try {
