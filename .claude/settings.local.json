@@ -53,7 +53,8 @@
       "Bash(npx -y netlify-cli sites:list)",
       "Bash(gh api *)",
       "Bash(nslookup parkflow-ai-deploy.netlify.app)",
-      "Bash(pkill -f \"python.*server\")"
+      "Bash(pkill -f \"python.*server\")",
+      "Bash(rm -rf \"D:/MyCodingProject/parkflow-ai/MVP DEMO/mvp-app/__pycache__\")"
     ]
   }
 }
