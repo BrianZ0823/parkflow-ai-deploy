@@ -1013,9 +1013,20 @@ function addMessage(role, content = "") {
   return item;
 }
 
-function createAgentMessage() {
+function createAgentMessage(conversational = false) {
   const item = addMessage("agent", "");
   const body = item.querySelector(".message-body");
+  if (conversational) {
+    body.innerHTML = `
+      <div class="message-meta">ParkFlow<span>正在回复</span></div>
+      <div class="live-status"><i aria-hidden="true"></i><span>正在理解你的问题</span></div>
+      <div class="message-content agent-text"><p>我正在整理回复，请稍候。</p></div>
+      ${messageActionsHtml("agent")}
+    `;
+    bindMessageActions(item);
+    state.currentAgentMessage = item;
+    return item;
+  }
   body.innerHTML = `
     <div class="message-meta">ParkFlow<span>正在分析</span></div>
     <div class="activity-timeline collapsed" id="activeTimeline">
@@ -1130,7 +1141,9 @@ function stopLiveProgress(markDone = true) {
     window.clearInterval(state.liveTimer);
     state.liveTimer = null;
   }
-  if (markDone) setLiveStatus("分析完成");
+  if (markDone) {
+    setLiveStatus(state._isConversationalTask ? "已回复" : "分析完成");
+  }
 }
 
 function activitySummary() {
@@ -2887,12 +2900,13 @@ async function runMission(task) {
   }
   showWorkspace();
 
-  // Quick fallback for simple questions (calculation, short Q&A)
+  // Quick fallback: handle purely local simple questions (math, greetings)
+  // If it needs the LLM, fall through to the normal flow below
   if (isSimpleQuestion(task)) {
-    addMessage("user", task);
-    addHistory("user", task);
-    const answer = await quickAnswerFallback(task);
+    const answer = quickAnswerFallback(task);
     if (answer) {
+      addMessage("user", task);
+      addHistory("user", task);
       renderPlainAnswer(answer);
       return { ok: true, intent: "simple_chat" };
     }
@@ -2931,9 +2945,11 @@ async function runMission(task) {
   }
   setAgentState("running");
   const status = taskStatusFor(task);
+  const isPlain = isPlainChat || isMetaConversation(task);
   ui.agentStatus.textContent = status.label;
   ui.goalUnderstanding.textContent = state.currentGoal || task;
   setLiveStatus(status.detail);
+  state._isConversationalTask = isPlain;
   state.streamingText = "";
   state.jsonBuffer = "";
   state.receivedTextDelta = false;
@@ -2941,7 +2957,7 @@ async function runMission(task) {
   state.currentAbort = new AbortController();
   addMessage("user", task);
   addHistory("user", task);
-  createAgentMessage();
+  createAgentMessage(isPlainChat);
   try {
     let payload;
     try {
