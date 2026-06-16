@@ -140,6 +140,46 @@ def excluded_names_from_task(task: str) -> list[str]:
     return names
 
 
+def _simple_compute(task: str) -> str | None:
+    """Quick compute for basic math expressions without touching the LLM.
+
+    Only triggers when the input is clearly a math expression (mostly digits/operators),
+    NOT when numbers appear incidentally in Chinese text like '帮我找3家企业'.
+    """
+    import ast, operator as _operator
+    text = (task or "").strip()
+    if not text or len(text) > 60:
+        return None
+
+    # Must be primarily a math expression: strip digits/ops, if Chinese chars remain, skip
+    stripped = re.sub(r"[0-9+\-*/().%\s=＝]+", "", text).strip()
+    has_chinese = bool(re.search(r"[一-鿿]", stripped))
+    if has_chinese:
+        return None
+
+    expr = text.replace("×", "*").replace("÷", "/").replace("＝", "=").replace("等于", "=")
+    expr = re.sub(r"[=＝].*$", "", expr).strip()
+    expr = re.sub(r"[^0-9+\-*/().% ]", "", expr).strip()
+    if not expr or re.search(r"[a-zA-Z]", expr):
+        return None
+    try:
+        tree = ast.parse(expr, mode="eval")
+        allowed = {ast.Expression, ast.BinOp, ast.UnaryOp, ast.Constant,
+                   ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Mod, ast.Pow, ast.USub, ast.UAdd}
+        for node in ast.walk(tree):
+            if type(node) not in allowed:
+                return None
+        _ops = {ast.Add: _operator.add, ast.Sub: _operator.sub, ast.Mult: _operator.mul,
+                ast.Div: _operator.truediv, ast.Mod: _operator.mod, ast.Pow: _operator.pow,
+                ast.USub: _operator.neg, ast.UAdd: _operator.pos}
+        result = eval(compile(tree, "<safe>", "eval"), {"__builtins__": {}}, _ops)
+        if isinstance(result, (int, float)) and result == int(result):
+            result = int(result)
+        return f"{expr} = {result}"
+    except Exception:
+        return None
+
+
 def contextualize_task_for_backend(task: str, body: dict[str, Any]) -> str:
     """Attach current frontend thread context without changing backend workflow."""
     thread = normalize_thread_context(body.get("thread_context"))
@@ -2152,7 +2192,7 @@ class Handler(BaseHTTPRequestHandler):
                 "mode": "conversation",
                 "status": "active",
                 "label": "正在回复",
-                "detail": "正在梳理你的招商问题",
+                "detail": "正在理解你的问题",
                 "elapsed_ms": 0,
             }
         )
@@ -2307,6 +2347,17 @@ class Handler(BaseHTTPRequestHandler):
             if not task:
                 self.send_json({"ok": False, "error": "请输入内容"}, 400)
                 return
+
+            # Fast path for simple computation / short Q&A
+            simple = _simple_compute(task)
+            if simple is not None:
+                self.start_ndjson_stream()
+                self.send_stream_event({"event": "agent_state", "mode": "conversation", "status": "active", "label": "正在回复", "detail": "正在回答", "elapsed_ms": 0})
+                self.send_stream_event({"event": "chunk", "content": simple, "elapsed_ms": 0})
+                self.send_stream_event({"event": "message", "ok": True, "mode": "conversation", "content": simple, "elapsed_ms": int((time.time() - started) * 1000)})
+                self.send_stream_event({"event": "done"})
+                return
+
             contextualized_task = contextualize_task_for_backend(task, body)
             if should_use_original_agent_chat(task) or not should_start_structured_workflow(task, body):
                 self.handle_original_agent_stream(contextualized_task, started)

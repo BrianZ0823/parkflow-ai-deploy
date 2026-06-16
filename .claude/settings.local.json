@@ -35,7 +35,25 @@
       "Bash(npm -v)",
       "Bash(echo \"npm: $\\(npm -v 2>/dev/null || echo 'N/A'\\)\")",
       "Bash(gh auth *)",
-      "Bash(gh repo *)"
+      "Bash(gh repo *)",
+      "Bash(npm i *)",
+      "Bash(railway login *)",
+      "Bash(railway init *)",
+      "Bash(railway list *)",
+      "Bash(railway project *)",
+      "Bash(railway rm *)",
+      "Bash(railway link *)",
+      "Bash(railway service *)",
+      "Bash(railway up *)",
+      "Bash(railway variables *)",
+      "Bash(railway status *)",
+      "Bash(railway logs *)",
+      "Bash(railway domain *)",
+      "Bash(export RAILWAY_TOKEN=\"xA8zJ7ijRZk5dNPXaBJlS_lhMU2BuMYHE5WZMAVElVm\")",
+      "Bash(npx -y netlify-cli sites:list)",
+      "Bash(gh api *)",
+      "Bash(nslookup parkflow-ai-deploy.netlify.app)",
+      "Bash(pkill -f \"python.*server\")"
     ]
   }
 }

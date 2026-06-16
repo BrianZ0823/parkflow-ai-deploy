@@ -660,6 +660,47 @@ function isMetaConversation(task = "") {
     || /介绍一下你|你可以做什么/.test(text);
 }
 
+function isSimpleQuestion(task = "") {
+  const text = (task || "").trim();
+  if (/^(你|你这边|帮我)?(算|计算|算一下|等于|是多少|结果)[：:\s]?/.test(text)) return true;
+  if (/[+\-*/÷×][=＝]|\d+[+\-*/÷×]\d+/.test(text)) return true;
+  if (/^(好的|可以|行|谢谢|ok|好的谢谢|知道了|明白|嗯|对)$/i.test(text)) return true;
+  if (/什么是|是什么意思|怎么用|如何/.test(text) && !/企业|产业|招商|政策/.test(text)) return true;
+  if (text.length <= 15 && !/企业|产业|招商|政策|公司|推荐|筛选|分析/.test(text)) return true;
+  return false;
+}
+
+async function quickAnswerFallback(task) {
+  const text = (task || "").trim();
+  if (/^[\d\s+\-*/÷×()]+[=＝]?\s*$/.test(text)) return null;
+  if (/[+\-*/÷×][=＝]|\d+[+\-*/÷×]\d+/.test(text)) {
+    try {
+      const expr = text.replace(/[=＝].*$/, "").replace(/×/g, "*").replace(/÷/g, "/").replace(/[^0-9+\-*/().]/g, "");
+      if (expr && !/[a-zA-Z]/.test(expr)) {
+        const result = Function(`"use strict"; return (${expr})`)();
+        return Number.isFinite(result) ? `${text.replace(/[=＝].*$/, "").trim()} = ${result}` : null;
+      }
+    } catch (_) {}
+    return null;
+  }
+  if (/^(好的|可以|行|谢谢|ok|知道了|明白|嗯|对)$/i.test(text)) {
+    return "好的，有什么需要继续了解的随时告诉我。";
+  }
+  return null;
+}
+
+function taskStatusFor(task = "") {
+  const text = task || "";
+  if (isMetaConversation(text)) return { label: "正在回复", detail: "正在理解你的问题" };
+  if (isSimpleQuestion(text)) return { label: "正在回复", detail: "正在回答" };
+  if (/对比|比较/.test(text) && /企业|公司|两家/.test(text)) return { label: "正在对比分析", detail: "正在对比企业能力、风险和招商优先级" };
+  if (/生成|写|起草|话术|邀约|邀请函|拜访提纲|汇报材料/.test(text)) return { label: "正在生成材料", detail: "正在引用企业与产业资料，生成可使用的招商材料" };
+  if (/政策|补贴|抓手/.test(text)) return { label: "正在分析政策", detail: "正在识别政策要点，匹配适用企业与产业方向" };
+  if (/分析|评估|研判/.test(text)) return { label: "正在分析", detail: "正在综合企业画像、政策匹配与风险信息" };
+  if (/筛选|推荐|找出|寻找|候选/.test(text)) return { label: "正在筛选", detail: "正在检索企业线索、匹配政策与产业机会" };
+  return { label: "正在分析", detail: "正在处理你的请求" };
+}
+
 function requestedCountFromTask(task) {
   const text = task || "";
   const digit = text.match(/(\d+)\s*家/);
@@ -2768,6 +2809,11 @@ function verificationHint(item = {}) {
 
 async function analyzeWithStream(task, signal) {
   const payload = buildRequestPayload(task);
+  const timeoutMs = 60000;
+  const timeoutId = setTimeout(() => signal?.dispatchEvent?.(new Event("abort")), timeoutMs);
+  const cleanup = () => clearTimeout(timeoutId);
+  signal?.addEventListener("abort", cleanup, { once: true });
+
   const response = await fetch(apiUrl("/api/message_stream"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -2840,6 +2886,18 @@ async function runMission(task) {
     return null;
   }
   showWorkspace();
+
+  // Quick fallback for simple questions (calculation, short Q&A)
+  if (isSimpleQuestion(task)) {
+    addMessage("user", task);
+    addHistory("user", task);
+    const answer = await quickAnswerFallback(task);
+    if (answer) {
+      renderPlainAnswer(answer);
+      return { ok: true, intent: "simple_chat" };
+    }
+  }
+
   if (isMaterialRequest(task) && state.report) {
     addMessage("user", task);
     addHistory("user", task);
@@ -2856,22 +2914,26 @@ async function runMission(task) {
     return { ok: true, intent: "shortlist_state" };
   }
 
-  const hasExistingThread = Boolean(state.currentGoal || state.candidates.length || state.history.length);
-  if (!hasExistingThread || isStandaloneMission(task)) {
+  // Reset stale context when a new independent question arrives
+  const isPlainChat = isSimpleQuestion(task) || isMetaConversation(task);
+  const isContextual = isContextualFollowup(task);
+  if (!isContextual && !isPlainChat) {
     state.currentGoal = task;
     state.selectedCompanyIndex = -1;
-    if (isStandaloneMission(task)) {
-      state.report = null;
-      state.context = null;
-      state.sources = [];
-      state.actions = [];
-      state.candidates = [];
-      state.lastSummary = "";
-    }
+  }
+  if (isPlainChat || (!isContextual && !/推荐|筛选|分析|评估|生成|企业|公司|产业|政策/.test(task))) {
+    state.report = null;
+    state.context = null;
+    state.sources = [];
+    state.actions = [];
+    state.candidates = [];
+    state.lastSummary = "";
   }
   setAgentState("running");
-  ui.agentStatus.textContent = "正在分析";
+  const status = taskStatusFor(task);
+  ui.agentStatus.textContent = status.label;
   ui.goalUnderstanding.textContent = state.currentGoal || task;
+  setLiveStatus(status.detail);
   state.streamingText = "";
   state.jsonBuffer = "";
   state.receivedTextDelta = false;
