@@ -265,6 +265,10 @@ def should_start_structured_workflow(task: str, body: dict[str, Any] | None = No
     if any(word in text for word in ["生成", "写", "起草", "邀请函", "话术", "拜访提纲", "汇报材料"]):
         thread = normalize_thread_context(body.get("thread_context"))
         return bool(thread.get("current_goal") or thread.get("active_company") or thread.get("candidates") or body.get("company"))
+    # Multi-round: thread exists → any follow-up stays in structured workflow
+    thread = normalize_thread_context(body.get("thread_context"))
+    if thread and (thread.get("candidates") or thread.get("current_goal")):
+        return True
     return False
 
 

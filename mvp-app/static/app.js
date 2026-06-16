@@ -607,7 +607,10 @@ function buildThreadContext() {
 }
 
 function contextForTask(task) {
-  return isContextualFollowup(task) ? buildThreadContext() : {};
+  // Always send thread context when it exists, not just when the text looks contextual.
+  // The backend uses thread context for routing multi-round follow-ups correctly.
+  const hasMemory = Boolean(state.currentGoal || state.report || state.candidates.length || state.history.length);
+  return hasMemory ? buildThreadContext() : {};
 }
 
 function isContextualFollowup(task) {
