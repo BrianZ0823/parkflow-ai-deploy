@@ -695,10 +695,27 @@ function ensureMessageMeta(item, role, content = "") {
 function getMessageText(item) {
   const raw = item.dataset.messageRaw || "";
   const body = item.querySelector(".message-content")?.innerText || "";
-  const artifact = item.querySelector(".artifact-slot")?.innerText || "";
+  const artifactSlot = item.querySelector(".artifact-slot");
+  const artifactText = artifactSlot ? extractArtifactContent(artifactSlot) : "";
   const parts = [raw || body];
-  if (artifact && !parts.includes(artifact)) parts.push(artifact);
+  if (artifactText && !parts.includes(artifactText)) parts.push(artifactText);
   return parts.filter(Boolean).join("\n\n").trim();
+}
+
+function extractArtifactContent(slot) {
+  const clone = slot.cloneNode(true);
+  clone.querySelectorAll(
+    ".artifact-toolbar, .artifact-header .artifact-kicker, footer, " +
+    "button, .message-actions, .card-actions, .evidence-tags, " +
+    ".metric span, .compare-head, .profile-grid dt, .material-card span:first-child"
+  ).forEach((el) => el.remove());
+  clone.querySelectorAll("[data-company-index], .company-card").forEach((el) => {
+    const name = el.querySelector("strong")?.textContent || "";
+    const reason = el.querySelector(".company-judgment")?.textContent || "";
+    el.replaceWith(`${name}：${reason}`);
+  });
+  clone.querySelectorAll("dt, .metric strong").forEach((el) => el.remove());
+  return clone.innerText.replace(/\n{3,}/g, "\n\n").trim();
 }
 
 function setMessageText(item, text) {
@@ -773,7 +790,7 @@ function truncateThreadAt(messageElement) {
   const messages = [...ui.thread.querySelectorAll(".message")];
   const idx = messages.indexOf(messageElement);
   if (idx < 0) return;
-  for (let i = messages.length - 1; i > idx; i--) {
+  for (let i = messages.length - 1; i >= idx; i--) {
     messages[i].remove();
   }
   const targetText = getMessageText(messageElement);
@@ -786,7 +803,7 @@ function truncateThreadAt(messageElement) {
     }
   }
   if (historyIdx >= 0) {
-    state.history = state.history.slice(0, historyIdx + 1);
+    state.history = state.history.slice(0, historyIdx);
   }
   queuePersistThread();
 }
@@ -817,12 +834,10 @@ function editMessage(item) {
   editor.querySelector("[data-message-edit='save']").addEventListener("click", () => {
     const next = textarea.value.trim();
     if (!next) return;
-    setMessageText(item, next);
     editor.remove();
     item.classList.remove("editing");
     resetWorkspaceState();
     truncateThreadAt(item);
-    addHistory("user", next);
     runMission(next);
   });
 }
@@ -850,22 +865,28 @@ function retryMessage(item) {
   if (!text) return;
   resetWorkspaceState();
   truncateThreadAt(target);
-  addHistory("user", text);
   ui.input.value = "";
   runMission(text);
 }
 
 function speakMessage(item) {
-  const text = getMessageText(item);
+  let text = getMessageText(item);
   if (!text) return;
+  text = text.replace(/[\s\n]+/g, " ").replace(/[•·•]/g, "").trim().substring(0, 2000);
   if (!("speechSynthesis" in window)) {
     showToast("当前浏览器不支持朗读", "warn");
     return;
   }
   window.speechSynthesis.cancel();
+  const voices = window.speechSynthesis.getVoices();
+  const preferred = voices.find((v) => v.lang.startsWith("zh-CN") && v.name.includes("Microsoft"))
+    || voices.find((v) => v.lang.startsWith("zh-CN"))
+    || voices.find((v) => v.lang.startsWith("zh"));
   const utterance = new SpeechSynthesisUtterance(text);
+  utterance.voice = preferred || null;
   utterance.lang = "zh-CN";
-  utterance.rate = 0.95;
+  utterance.rate = 0.9;
+  utterance.pitch = 1.0;
   window.speechSynthesis.speak(utterance);
   showToast("正在朗读");
 }
@@ -2717,7 +2738,15 @@ function bindPromptButtons(root = document) {
 function bindCommandActions(root = document) {
   root.querySelectorAll("[data-command-action]").forEach((button) => {
     button.addEventListener("click", () => {
-      routeAction(ACTION_TYPES.agent, button.dataset.commandAction || "outline");
+      const promptMap = {
+        outline: "基于当前招商研判，帮我生成企业拜访提纲。",
+        wechat: "基于当前推荐企业，帮我生成微信邀约话术。",
+        briefing: "把当前推荐整理成领导汇报摘要。",
+        compare: "帮我对比清单中的候选企业，给出优先级排序。",
+      };
+      const action = button.dataset.commandAction || "outline";
+      ui.input.value = promptMap[action] || `帮我${button.textContent.trim()}`;
+      ui.input.focus();
     });
   });
 }

@@ -1437,96 +1437,193 @@ def _safe_text(value: Any) -> str:
     return str(value)
 
 
+def _setup_doc_style(doc: Any, normal_font: str = "仿宋", normal_size: int = 16) -> Any:
+    from docx.shared import Pt, Cm
+    from docx.oxml.ns import qn
+
+    for section in doc.sections:
+        section.top_margin = Cm(3.7)
+        section.bottom_margin = Cm(3.5)
+        section.left_margin = Cm(2.8)
+        section.right_margin = Cm(2.6)
+
+    style = doc.styles["Normal"]
+    style.font.name = normal_font
+    style.font.size = Pt(normal_size)
+    style.element.rPr.rFonts.set(qn("w:eastAsia"), normal_font)
+    pf = style.paragraph_format
+    pf.line_spacing = Pt(28)
+    pf.space_before = Pt(0)
+    pf.space_after = Pt(0)
+    pf.first_line_indent = Pt(normal_size * 2)
+    return style
+
+
+def _add_doc_title(doc: Any, text: str) -> Any:
+    from docx.shared import Pt
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml.ns import qn
+
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    pf = p.paragraph_format
+    pf.line_spacing = Pt(36)
+    pf.space_before = Pt(0)
+    pf.space_after = Pt(10)
+    pf.first_line_indent = Pt(0)
+    run = p.add_run(text)
+    run.font.name = "宋体"
+    run.font.size = Pt(22)
+    run.bold = True
+    run.element.rPr.rFonts.set(qn("w:eastAsia"), "宋体")
+    return p
+
+
+def _add_doc_heading(doc: Any, text: str, font_name: str = "黑体", size: int = 16) -> Any:
+    from docx.shared import Pt
+    from docx.oxml.ns import qn
+
+    p = doc.add_paragraph()
+    pf = p.paragraph_format
+    pf.line_spacing = Pt(28)
+    pf.space_before = Pt(6)
+    pf.space_after = Pt(3)
+    pf.first_line_indent = Pt(0)
+    run = p.add_run(text)
+    run.font.name = font_name
+    run.font.size = Pt(size)
+    run.bold = True
+    run.element.rPr.rFonts.set(qn("w:eastAsia"), font_name)
+    return p
+
+
+def _add_doc_body(doc: Any, text: str, indent: bool = True) -> Any:
+    from docx.shared import Pt
+    from docx.oxml.ns import qn
+
+    p = doc.add_paragraph()
+    pf = p.paragraph_format
+    pf.line_spacing = Pt(28)
+    pf.space_before = Pt(0)
+    pf.space_after = Pt(0)
+    pf.first_line_indent = Pt(32) if indent else Pt(0)
+    run = p.add_run(text)
+    run.font.name = "仿宋"
+    run.font.size = Pt(16)
+    run.element.rPr.rFonts.set(qn("w:eastAsia"), "仿宋")
+    return p
+
+
+def _add_doc_bullet(doc: Any, text: str) -> Any:
+    from docx.shared import Pt
+    from docx.oxml.ns import qn
+
+    p = doc.add_paragraph()
+    pf = p.paragraph_format
+    pf.line_spacing = Pt(28)
+    pf.left_indent = Pt(32)
+    pf.first_line_indent = Pt(-16)
+    run = p.add_run(f"— {text}")
+    run.font.name = "仿宋"
+    run.font.size = Pt(16)
+    run.element.rPr.rFonts.set(qn("w:eastAsia"), "仿宋")
+    return p
+
+
+def _chinese_num(n: int) -> str:
+    nums = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十"]
+    if n <= 10:
+        return nums[n]
+    if n < 20:
+        return f"十{nums[n - 10]}"
+    return str(n)
+
+
 def build_report_docx(report: dict[str, Any], context: dict[str, Any]) -> bytes:
     from docx import Document
-    from docx.shared import Pt, Inches, Cm
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Pt
+    from docx.oxml.ns import qn
 
     doc = Document()
-    style = doc.styles["Normal"]
-    font = style.font
-    font.name = "Microsoft YaHei"
-    font.size = Pt(11)
+    _setup_doc_style(doc)
 
-    title = doc.add_heading("企业招商研判报告", level=0)
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _add_doc_title(doc, "企业招商研判报告")
 
-    verdict_map = {"值得重点推进": "值得重点推进", "谨慎推进": "谨慎推进", "暂不建议推进": "暂不建议推进"}
-    verdict = verdict_map.get(_safe_text(report.get("verdict")), _safe_text(report.get("verdict")))
-    doc.add_paragraph(f"核心判断：{verdict}", style="Intense Quote")
-    doc.add_paragraph(_safe_text(report.get("summary")))
-
+    verdict = _safe_text(report.get("verdict", ""))
+    summary = _safe_text(report.get("summary", ""))
     metrics = report.get("metrics") or {}
-    doc.add_heading("关键指标", level=2)
-    table = doc.add_table(rows=2, cols=3)
-    table.style = "Light Grid Accent 1"
-    cells = table.rows[0].cells
-    cells[0].text = "匹配度"
-    cells[1].text = "风险等级"
-    cells[2].text = "建议动作"
-    cells = table.rows[1].cells
-    cells[0].text = str(metrics.get("match_score", "-"))
-    cells[1].text = _safe_text(metrics.get("risk_level", "-"))
-    cells[2].text = _safe_text(metrics.get("recommended_action", "-"))
+
+    _add_doc_heading(doc, "一、核心判断", "黑体")
+    _add_doc_body(doc, f"结论：{verdict}")
+    if summary:
+        _add_doc_body(doc, summary)
+
+    _add_doc_heading(doc, "二、关键指标", "黑体")
+    _add_doc_body(doc, f"匹配度：{_safe_text(metrics.get('match_score', '-'))}　　"
+                       f"风险等级：{_safe_text(metrics.get('risk_level', '-'))}　　"
+                       f"建议动作：{_safe_text(metrics.get('recommended_action', '-'))}")
 
     sections = report.get("sections") or []
+    section_counter = 3
     for section in sections:
         if not isinstance(section, dict):
             continue
         sec_title = _safe_text(section.get("title"))
         if not sec_title:
             continue
-        doc.add_heading(sec_title, level=2)
+        _add_doc_heading(doc, f"{_chinese_num(section_counter)}、{sec_title}", "黑体")
+        section_counter += 1
         body = _safe_text(section.get("body"))
         if body:
-            doc.add_paragraph(body)
-        bullets = section.get("bullets") or []
-        for bullet in bullets:
-            doc.add_paragraph(_safe_text(bullet), style="List Bullet")
+            _add_doc_body(doc, body)
+        for bullet in (section.get("bullets") or []):
+            _add_doc_bullet(doc, _safe_text(bullet))
 
     ranked = report.get("ranked_companies") or context.get("candidate_enterprises") or []
     if ranked:
-        doc.add_heading("候选企业排名", level=2)
-        headers = ["排名", "企业名称", "匹配分", "推荐理由", "下一步"]
-        row_count = min(len(ranked), 8) + 1
-        cols = len(headers)
-        table = doc.add_table(rows=row_count, cols=cols)
-        table.style = "Light Grid Accent 1"
-        for idx, header in enumerate(headers):
-            table.rows[0].cells[idx].text = header
-        for row_idx, company in enumerate(ranked[:8]):
+        _add_doc_heading(doc, f"{_chinese_num(section_counter)}、候选企业排名", "黑体")
+        section_counter += 1
+        for idx, company in enumerate(ranked[:8]):
             if not isinstance(company, dict):
                 continue
-            cells = table.rows[row_idx + 1].cells
-            cells[0].text = str(row_idx + 1)
-            cells[1].text = _safe_text(company.get("name"))
-            cells[2].text = str(company.get("score", "-"))
-            cells[3].text = _safe_text(company.get("reason", ""))[:80]
-            cells[4].text = _safe_text(company.get("next_step", ""))[:60]
+            line = f"{idx + 1}. {_safe_text(company.get('name'))}　匹配分 {_safe_text(company.get('score', '-'))}"
+            reason = _safe_text(company.get("reason", ""))
+            if reason:
+                line += f"\n　—— {reason[:80]}"
+            _add_doc_bullet(doc, line)
 
     policy_matches = report.get("policy_matches") or []
     if policy_matches:
-        doc.add_heading("政策匹配", level=2)
+        _add_doc_heading(doc, f"{_chinese_num(section_counter)}、政策匹配", "黑体")
+        section_counter += 1
         for policy in policy_matches:
-            doc.add_paragraph(_safe_text(policy), style="List Bullet")
+            _add_doc_bullet(doc, _safe_text(policy))
 
     action_plan = report.get("action_plan") or []
     if action_plan:
-        doc.add_heading("推进计划", level=2)
+        _add_doc_heading(doc, f"{_chinese_num(section_counter)}、推进计划", "黑体")
+        section_counter += 1
         for idx, action in enumerate(action_plan, 1):
-            doc.add_paragraph(f"{idx}. {_safe_text(action)}")
+            _add_doc_body(doc, f"（{_chinese_num(idx)}）{_safe_text(action)}")
 
     evidence = context.get("evidence") or []
     if evidence:
-        doc.add_heading("数据来源", level=2)
+        _add_doc_heading(doc, "附件：判断依据", "楷体")
         for item in evidence[:8]:
             if not isinstance(item, dict):
                 continue
-            src_label = f"{_safe_text(item.get('title'))} ({_safe_text(item.get('source'))})"
-            doc.add_paragraph(src_label, style="List Bullet")
+            src = f"{_safe_text(item.get('title'))}（{_safe_text(item.get('source'))}）"
+            _add_doc_bullet(doc, src)
 
-    doc.add_paragraph("")
-    doc.add_paragraph("由 ParkFlow AI 生成，仅供参考，不作为唯一决策依据。").italic = True
+    _add_doc_body(doc, "", indent=False)
+    p = doc.add_paragraph()
+    p.paragraph_format.line_spacing = Pt(28)
+    p.alignment = 1
+    run = p.add_run("由 ParkFlow AI 生成，仅供参考。")
+    run.font.name = "仿宋"
+    run.font.size = Pt(10)
+    run.italic = True
+    run.element.rPr.rFonts.set(qn("w:eastAsia"), "仿宋")
 
     buf = io.BytesIO()
     doc.save(buf)
@@ -1536,86 +1633,121 @@ def build_report_docx(report: dict[str, Any], context: dict[str, Any]) -> bytes:
 def build_material_docx(material: dict[str, Any], material_type: str) -> bytes:
     from docx import Document
     from docx.shared import Pt
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml.ns import qn
 
     doc = Document()
-    style = doc.styles["Normal"]
-    font = style.font
-    font.name = "Microsoft YaHei"
-    font.size = Pt(11)
+    _setup_doc_style(doc)
 
     label = MATERIAL_LABELS.get(material_type, material_type or "招商材料")
     title = _safe_text(material.get("title")) or label
-    doc_heading = doc.add_heading(title, level=0)
-    doc_heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _add_doc_title(doc, title)
 
     audience = _safe_text(material.get("audience"))
     if audience:
-        doc.add_paragraph(f"对象：{audience}")
+        p = doc.add_paragraph()
+        p.paragraph_format.line_spacing = Pt(28)
+        p.paragraph_format.first_line_indent = Pt(0)
+        run = p.add_run(f"对象：{audience}")
+        run.font.name = "楷体"
+        run.font.size = Pt(14)
+        run.element.rPr.rFonts.set(qn("w:eastAsia"), "楷体")
 
     content = material.get("content") or []
     if isinstance(content, list):
         for para in content:
-            doc.add_paragraph(_safe_text(para))
+            _add_doc_body(doc, _safe_text(para))
     else:
-        doc.add_paragraph(_safe_text(content))
+        _add_doc_body(doc, _safe_text(content))
 
     source_notes = material.get("source_notes") or []
     if source_notes:
-        doc.add_heading("依据", level=2)
+        _add_doc_heading(doc, "依据", "楷体")
         for note in source_notes:
-            doc.add_paragraph(_safe_text(note), style="List Bullet")
+            _add_doc_bullet(doc, _safe_text(note))
 
-    doc.add_paragraph("")
-    doc.add_paragraph("由 ParkFlow AI 生成，可直接用于招商工作。").italic = True
+    _add_doc_body(doc, "", indent=False)
+    p = doc.add_paragraph()
+    p.paragraph_format.line_spacing = Pt(28)
+    p.alignment = 1
+    run = p.add_run("由 ParkFlow AI 生成，可直接用于招商工作。")
+    run.font.name = "仿宋"
+    run.font.size = Pt(10)
+    run.italic = True
+    run.element.rPr.rFonts.set(qn("w:eastAsia"), "仿宋")
 
     buf = io.BytesIO()
     doc.save(buf)
     return buf.getvalue()
 
 
-# Chinese font path for PDF generation
+_PDF_FONT_NAME = "msyh"
 _PDF_FONT_PATH = "C:/Windows/Fonts/msyh.ttc"
+_PDF_FONT_BOLD = "C:/Windows/Fonts/msyhbd.ttc"
 
 
-def _build_pdf_base() -> Any:
-    from fpdf import FPDF
+def _build_pdf_styles() -> Any:
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
 
-    pdf = FPDF()
-    pdf.set_auto_page_break(True, 20)
-    pdf.add_font("CJK", "", _PDF_FONT_PATH, uni=True)
-    pdf.add_font("CJK", "B", "C:/Windows/Fonts/msyhbd.ttc", uni=True)
-    pdf.add_page()
-    return pdf
+    return {
+        "title": ParagraphStyle("pdf_title", fontName=_PDF_FONT_NAME, fontSize=18, leading=24, alignment=TA_CENTER, spaceAfter=8 * mm),
+        "subtitle": ParagraphStyle("pdf_sub", fontName=_PDF_FONT_NAME, fontSize=13, leading=18, spaceAfter=4 * mm),
+        "heading": ParagraphStyle("pdf_h", fontName=_PDF_FONT_NAME, fontSize=13, leading=18, spaceBefore=6 * mm, spaceAfter=3 * mm),
+        "body": ParagraphStyle("pdf_body", fontName=_PDF_FONT_NAME, fontSize=10, leading=16, alignment=TA_LEFT, spaceAfter=2 * mm),
+        "small": ParagraphStyle("pdf_small", fontName=_PDF_FONT_NAME, fontSize=8, leading=12, alignment=TA_CENTER),
+        "table_header": ParagraphStyle("pdf_th", fontName=_PDF_FONT_NAME, fontSize=9, leading=13, alignment=TA_CENTER),
+        "table_cell": ParagraphStyle("pdf_td", fontName=_PDF_FONT_NAME, fontSize=9, leading=13),
+        "footer": ParagraphStyle("pdf_foot", fontName=_PDF_FONT_NAME, fontSize=8, leading=12, alignment=TA_CENTER, textColor=colors.gray),
+    }
+
+
+def _register_pdf_font() -> None:
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    try:
+        pdfmetrics.registerFont(TTFont(_PDF_FONT_NAME, _PDF_FONT_PATH))
+        pdfmetrics.registerFont(TTFont(_PDF_FONT_NAME + "-Bold", _PDF_FONT_BOLD))
+    except Exception:
+        pass
 
 
 def build_report_pdf(report: dict[str, Any], context: dict[str, Any]) -> bytes:
-    pdf = _build_pdf_base()
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
 
-    pdf.set_font("CJK", "B", 18)
-    pdf.cell(0, 12, "企业招商研判报告", align="C", new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(6)
+    _register_pdf_font()
+    S = _build_pdf_styles()
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=(210 * mm, 297 * mm),
+                           leftMargin=25 * mm, rightMargin=20 * mm,
+                           topMargin=25 * mm, bottomMargin=20 * mm)
+    story = []
+
+    story.append(Paragraph("企业招商研判报告", S["title"]))
+    story.append(Spacer(1, 4 * mm))
 
     verdict = _safe_text(report.get("verdict", ""))
     summary = _safe_text(report.get("summary", ""))
     metrics = report.get("metrics") or {}
 
-    pdf.set_font("CJK", "B", 14)
-    pdf.cell(0, 9, f"核心判断：{verdict}", new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(3)
+    core_style = ParagraphStyle("core", parent=S["subtitle"], fontName=_PDF_FONT_NAME + "-Bold")
+    story.append(Paragraph(f"核心判断：{verdict}", core_style))
     if summary:
-        pdf.set_font("CJK", "", 10)
-        pdf.multi_cell(0, 6, summary)
-        pdf.ln(3)
+        story.append(Paragraph(summary, S["body"]))
 
-    pdf.set_font("CJK", "B", 13)
-    pdf.cell(0, 9, "关键指标", new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(2)
-    pdf.set_font("CJK", "", 10)
-    pdf.cell(60, 7, f"匹配度：{_safe_text(metrics.get('match_score', '-'))}")
-    pdf.cell(60, 7, f"风险等级：{_safe_text(metrics.get('risk_level', '-'))}")
-    pdf.cell(0, 7, f"建议动作：{_safe_text(metrics.get('recommended_action', '-'))}", new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(4)
+    story.append(Paragraph("关键指标", S["heading"]))
+    story.append(Paragraph(
+        f"匹配度：{_safe_text(metrics.get('match_score', '-'))}　　"
+        f"风险等级：{_safe_text(metrics.get('risk_level', '-'))}　　"
+        f"建议动作：{_safe_text(metrics.get('recommended_action', '-'))}",
+        S["body"]
+    ))
 
     sections = report.get("sections") or []
     for section in sections:
@@ -1624,124 +1756,117 @@ def build_report_pdf(report: dict[str, Any], context: dict[str, Any]) -> bytes:
         sec_title = _safe_text(section.get("title"))
         if not sec_title:
             continue
-        pdf.set_font("CJK", "B", 12)
-        pdf.cell(0, 8, sec_title, new_x="LMARGIN", new_y="NEXT")
-        pdf.set_font("CJK", "", 10)
+        h_style = ParagraphStyle("sec_h", parent=S["heading"], fontName=_PDF_FONT_NAME + "-Bold")
+        story.append(Paragraph(sec_title, h_style))
         body = _safe_text(section.get("body"))
         if body:
-            pdf.multi_cell(0, 6, body)
+            story.append(Paragraph(body, S["body"]))
         bullets = section.get("bullets") or []
         for bullet in bullets:
-            pdf.set_x(pdf.l_margin)
-            pdf.multi_cell(0, 6, f"  •  {_safe_text(bullet)}")
-        pdf.ln(2)
+            story.append(Paragraph(f"• {_safe_text(bullet)}", S["body"]))
 
     ranked = report.get("ranked_companies") or context.get("candidate_enterprises") or []
     if ranked:
-        pdf.ln(2)
-        pdf.set_font("CJK", "B", 13)
-        pdf.cell(0, 9, "候选企业排名", new_x="LMARGIN", new_y="NEXT")
-        pdf.ln(2)
-        pdf.set_font("CJK", "B", 9)
-        col_widths = [10, 40, 16, 80, 40]
-        headers = ["#", "企业", "匹配分", "推荐理由", "下一步"]
-        for i, h in enumerate(headers):
-            pdf.cell(col_widths[i], 7, h, border=1, align="C")
-        pdf.ln()
-        pdf.set_font("CJK", "", 9)
+        story.append(Paragraph("候选企业排名", S["heading"]))
+        headers = ["#", "企业名称", "匹配分", "推荐理由", "下一步建议"]
+        header_row = [Paragraph(h, S["table_header"]) for h in headers]
+        table_data = [header_row]
         for idx, company in enumerate(ranked[:8]):
             if not isinstance(company, dict):
                 continue
             row = [
-                str(idx + 1),
-                _safe_text(company.get("name"))[:12],
-                str(company.get("score", "-")),
-                _safe_text(company.get("reason", ""))[:36],
-                _safe_text(company.get("next_step", ""))[:18],
+                Paragraph(str(idx + 1), S["table_header"]),
+                Paragraph(_safe_text(company.get("name"))[:18], S["table_cell"]),
+                Paragraph(str(company.get("score", "-")), S["table_header"]),
+                Paragraph(_safe_text(company.get("reason", ""))[:50], S["table_cell"]),
+                Paragraph(_safe_text(company.get("next_step", ""))[:24], S["table_cell"]),
             ]
-            for i, val in enumerate(row):
-                pdf.cell(col_widths[i], 7, val, border=1, align="C" if i in (0, 2) else "L")
-            pdf.ln()
+            table_data.append(row)
+        col_w = [12 * mm, 42 * mm, 16 * mm, 70 * mm, 36 * mm]
+        tbl = Table(table_data, colWidths=col_w, repeatRows=1)
+        tbl.setStyle(TableStyle([
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]))
+        story.append(tbl)
 
     policy_matches = report.get("policy_matches") or []
     if policy_matches:
-        pdf.ln(3)
-        pdf.set_font("CJK", "B", 12)
-        pdf.cell(0, 8, "政策匹配", new_x="LMARGIN", new_y="NEXT")
-        pdf.set_font("CJK", "", 10)
+        story.append(Paragraph("政策匹配", S["heading"]))
         for policy in policy_matches:
-            pdf.set_x(pdf.l_margin)
-            pdf.multi_cell(0, 6, f"  •  {_safe_text(policy)}")
+            story.append(Paragraph(f"• {_safe_text(policy)}", S["body"]))
 
     action_plan = report.get("action_plan") or []
     if action_plan:
-        pdf.ln(2)
-        pdf.set_font("CJK", "B", 12)
-        pdf.cell(0, 8, "推进计划", new_x="LMARGIN", new_y="NEXT")
-        pdf.set_font("CJK", "", 10)
+        story.append(Paragraph("推进计划", S["heading"]))
         for idx, action in enumerate(action_plan, 1):
-            pdf.cell(0, 6, f"{idx}. {_safe_text(action)}", new_x="LMARGIN", new_y="NEXT")
+            story.append(Paragraph(f"{idx}. {_safe_text(action)}", S["body"]))
 
     evidence = context.get("evidence") or []
     if evidence:
-        pdf.ln(3)
-        pdf.set_font("CJK", "B", 12)
-        pdf.cell(0, 8, "判断依据（资料引用）", new_x="LMARGIN", new_y="NEXT")
-        pdf.set_font("CJK", "", 9)
+        story.append(Paragraph("判断依据（资料引用）", S["heading"]))
         for item in evidence:
             if not isinstance(item, dict):
                 continue
             src = f"{_safe_text(item.get('title'))} ({_safe_text(item.get('source'))})"
-            pdf.set_x(pdf.l_margin)
-            pdf.multi_cell(0, 5, f"  •  {src}")
+            story.append(Paragraph(f"• {src}", S["small"]))
 
-    pdf.ln(4)
-    pdf.set_font("CJK", "", 8)
-    pdf.cell(0, 6, "由 ParkFlow AI 生成，仅供参考，不作为唯一决策依据。", align="C", new_x="LMARGIN", new_y="NEXT")
+    story.append(Spacer(1, 6 * mm))
+    story.append(Paragraph("由 ParkFlow AI 生成，仅供参考，不作为唯一决策依据。", S["footer"]))
 
-    return bytes(pdf.output())
+    doc.build(story)
+    return buf.getvalue()
 
 
 def build_material_pdf(material: dict[str, Any], material_type: str) -> bytes:
-    pdf = _build_pdf_base()
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER
+    from reportlab.lib.units import mm
+
+    _register_pdf_font()
+    S = _build_pdf_styles()
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=(210 * mm, 297 * mm),
+                           leftMargin=25 * mm, rightMargin=20 * mm,
+                           topMargin=25 * mm, bottomMargin=20 * mm)
+    story = []
 
     label = MATERIAL_LABELS.get(material_type, material_type or "招商材料")
     title = _safe_text(material.get("title")) or label
-
-    pdf.set_font("CJK", "B", 18)
-    pdf.cell(0, 12, title, align="C", new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(8)
+    story.append(Paragraph(title, S["title"]))
+    story.append(Spacer(1, 6 * mm))
 
     audience = _safe_text(material.get("audience"))
     if audience:
-        pdf.set_font("CJK", "", 10)
-        pdf.cell(0, 7, f"对象：{audience}", new_x="LMARGIN", new_y="NEXT")
-        pdf.ln(4)
+        aud_style = ParagraphStyle("aud", parent=S["body"], fontName=_PDF_FONT_NAME + "-Bold")
+        story.append(Paragraph(f"对象：{audience}", aud_style))
+        story.append(Spacer(1, 3 * mm))
 
     content = material.get("content") or []
-    pdf.set_font("CJK", "", 11)
     if isinstance(content, list):
         for para in content:
-            pdf.multi_cell(0, 6.5, _safe_text(para))
-            pdf.ln(2)
+            story.append(Paragraph(_safe_text(para), S["body"]))
+            story.append(Spacer(1, 1.5 * mm))
     else:
-        pdf.multi_cell(0, 6.5, _safe_text(content))
+        story.append(Paragraph(_safe_text(content), S["body"]))
 
     source_notes = material.get("source_notes") or []
     if source_notes:
-        pdf.ln(3)
-        pdf.set_font("CJK", "B", 11)
-        pdf.cell(0, 7, "依据", new_x="LMARGIN", new_y="NEXT")
-        pdf.set_font("CJK", "", 9)
+        story.append(Spacer(1, 3 * mm))
+        story.append(Paragraph("依据", S["heading"]))
         for note in source_notes:
-            pdf.set_x(pdf.l_margin)
-            pdf.multi_cell(0, 5, f"  •  {_safe_text(note)}")
+            story.append(Paragraph(f"• {_safe_text(note)}", S["small"]))
 
-    pdf.ln(4)
-    pdf.set_font("CJK", "", 8)
-    pdf.cell(0, 6, "由 ParkFlow AI 生成，可直接用于招商工作。", align="C", new_x="LMARGIN", new_y="NEXT")
+    story.append(Spacer(1, 6 * mm))
+    story.append(Paragraph("由 ParkFlow AI 生成，可直接用于招商工作。", S["footer"]))
 
-    return bytes(pdf.output())
+    doc.build(story)
+    return buf.getvalue()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -1955,18 +2080,9 @@ class Handler(BaseHTTPRequestHandler):
                 "report": draft_report(context),
             }
         )
-        self.send_stream_event({"event": "stage", "id": "llm", "label": "形成招商建议", "status": "active", "detail": "整理推荐企业、推荐理由和下一步推进动作"})
+        self.send_stream_event({"event": "stage", "id": "llm", "label": "形成招商建议", "status": "active", "detail": "正在综合企业画像、政策匹配与风险信息生成招商研判..."})
         try:
-            def stream_chunk(content: str) -> None:
-                self.send_stream_event(
-                    {
-                        "event": "chunk",
-                        "content": content,
-                        "elapsed_ms": int((time.time() - started) * 1000),
-                    }
-                )
-
-            report = generate_report_stream(context, on_chunk=stream_chunk)
+            report = generate_report(context)
             self.send_stream_event(
                 {
                     "event": "report",
