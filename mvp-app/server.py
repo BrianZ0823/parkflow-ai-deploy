@@ -2034,6 +2034,7 @@ def _rag_startup_check() -> str:
 def main() -> None:
     port = int(os.getenv("MVP_PORT", "8765"))
     host = os.getenv("MVP_HOST", "127.0.0.1")
+    server = ThreadingHTTPServer((host, port), Handler)
     print(f"ParkFlow AI MVP running at http://{host}:{port}")
     print(f"Reading original V0 data from: {ORIGINAL_DIR}")
     rag_status = _rag_startup_check()
