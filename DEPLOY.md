@@ -19,6 +19,7 @@
 | 项目 | 值 |
 |---|---|
 | 仓库 | `BrianZ0823/parkflow-ai-deploy` |
+| 站点 | `https://fancy-phoenix-0b5362.netlify.app` |
 | 构建命令 | `node deploy/write-frontend-config.mjs`（由 `netlify.toml` 自动设置）|
 | 发布目录 | `mvp-app/static` |
 | 环境变量 | `PARKFLOW_API_BASE=https://parkflow-ai-deploy-production.up.railway.app` |
