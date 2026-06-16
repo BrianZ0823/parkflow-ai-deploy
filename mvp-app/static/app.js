@@ -683,7 +683,7 @@ async function quickAnswerFallback(task) {
     } catch (_) {}
     return null;
   }
-  if (/^(好的|可以|行|谢谢|ok|知道了|明白|嗯|对)$/i.test(text)) {
+  if (/^(好的|可以|行|谢谢|ok|知道了|明白|嗯|对|好的谢谢|好的好的|ok谢谢)[!！\s]*$/i.test(text)) {
     return "好的，有什么需要继续了解的随时告诉我。";
   }
   return null;
