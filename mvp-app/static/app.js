@@ -2984,9 +2984,18 @@ async function runMission(task) {
     if (state.stopRequested || error.name === "AbortError") return { ok: false, intent: "stopped" };
     stopLiveProgress(false);
     setAgentState("ready");
-    ui.agentStatus.textContent = "需要补充";
     finishActivities();
-    renderAgentText(`这次还没有形成可交付结果：${error.message}。可以补充企业名称、产业方向、地区或数量后继续。`);
+    const msg = String(error.message || "");
+    if (/fetch|network|connect|ECONN|timeout|超时/i.test(msg)) {
+      ui.agentStatus.textContent = "连接失败";
+      renderAgentText(`后端服务暂时无法连接（${msg}）。请确认 API 地址和服务状态，或稍后重试。`);
+    } else if (/没有找到|不足|线索|匹配/i.test(msg)) {
+      ui.agentStatus.textContent = "需要补充";
+      renderAgentText(`这次还没有形成可交付结果：${msg}。可以补充企业名称、产业方向、地区或数量后继续。`);
+    } else {
+      ui.agentStatus.textContent = "请求失败";
+      renderAgentText(`请求未完成：${msg}。可以重试或调整条件后继续。`);
+    }
   } finally {
     state.currentAbort = null;
   }

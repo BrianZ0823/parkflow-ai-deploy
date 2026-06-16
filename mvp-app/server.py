@@ -38,7 +38,7 @@ LLM_MODEL = os.getenv("DASHSCOPE_MODEL", "qwen-plus")
 LLM_TIMEOUT = int(os.getenv("MVP_LLM_TIMEOUT_SECONDS", "45"))
 ALLOWED_ORIGINS = {
     origin.strip().rstrip("/")
-    for origin in os.getenv("CORS_ALLOWED_ORIGINS", os.getenv("FRONTEND_ORIGIN", "")).split(",")
+    for origin in os.getenv("CORS_ALLOWED_ORIGINS", os.getenv("FRONTEND_ORIGIN", "*")).split(",")
     if origin.strip()
 }
 
