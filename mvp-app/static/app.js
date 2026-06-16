@@ -693,7 +693,12 @@ function ensureMessageMeta(item, role, content = "") {
 }
 
 function getMessageText(item) {
-  return (item.dataset.messageRaw || item.querySelector(".message-content")?.innerText || "").trim();
+  const raw = item.dataset.messageRaw || "";
+  const body = item.querySelector(".message-content")?.innerText || "";
+  const artifact = item.querySelector(".artifact-slot")?.innerText || "";
+  const parts = [raw || body];
+  if (artifact && !parts.includes(artifact)) parts.push(artifact);
+  return parts.filter(Boolean).join("\n\n").trim();
 }
 
 function setMessageText(item, text) {
@@ -749,6 +754,43 @@ function removeHistoryMessage(item, text) {
   if (index >= 0) state.history.splice(index, 1);
 }
 
+function resetWorkspaceState() {
+  state.currentGoal = "";
+  state.selectedCompanyIndex = -1;
+  state.lastSummary = "";
+  state.report = null;
+  state.context = null;
+  state.sources = [];
+  state.actions = [];
+  state.candidates = [];
+  state.shortlist = [];
+  state.lastMaterial = null;
+  state.activityItems = [];
+  state.streamingText = "";
+}
+
+function truncateThreadAt(messageElement) {
+  const messages = [...ui.thread.querySelectorAll(".message")];
+  const idx = messages.indexOf(messageElement);
+  if (idx < 0) return;
+  for (let i = messages.length - 1; i > idx; i--) {
+    messages[i].remove();
+  }
+  const targetText = getMessageText(messageElement);
+  const role = messageElement.dataset.messageRole || "";
+  let historyIdx = -1;
+  for (let i = state.history.length - 1; i >= 0; i--) {
+    if (state.history[i].role === role && state.history[i].content === targetText) {
+      historyIdx = i;
+      break;
+    }
+  }
+  if (historyIdx >= 0) {
+    state.history = state.history.slice(0, historyIdx + 1);
+  }
+  queuePersistThread();
+}
+
 function editMessage(item) {
   if ((item.dataset.messageRole || "") !== "user") return;
   const text = getMessageText(item);
@@ -761,7 +803,7 @@ function editMessage(item) {
     <textarea rows="3">${escapeHtml(text)}</textarea>
     <div>
       <button type="button" data-message-edit="cancel">取消</button>
-      <button type="button" data-message-edit="save">保存</button>
+      <button type="button" data-message-edit="save">保存并重新发送</button>
     </div>
   `;
   body.appendChild(editor);
@@ -774,10 +816,14 @@ function editMessage(item) {
   });
   editor.querySelector("[data-message-edit='save']").addEventListener("click", () => {
     const next = textarea.value.trim();
-    if (next) setMessageText(item, next);
+    if (!next) return;
+    setMessageText(item, next);
     editor.remove();
     item.classList.remove("editing");
-    showToast("消息已修改");
+    resetWorkspaceState();
+    truncateThreadAt(item);
+    addHistory("user", next);
+    runMission(next);
   });
 }
 
@@ -791,16 +837,22 @@ function deleteMessage(item) {
 
 function retryMessage(item) {
   let text = getMessageText(item);
+  let target = item;
   if ((item.dataset.messageRole || "") === "agent") {
     const messages = [...ui.thread.querySelectorAll(".message")];
     const index = messages.indexOf(item);
     const previousUser = messages.slice(0, index).reverse().find((node) => node.dataset.messageRole === "user");
-    text = previousUser ? getMessageText(previousUser) : text;
+    if (previousUser) {
+      text = getMessageText(previousUser);
+      target = previousUser;
+    }
   }
   if (!text) return;
-  ui.input.value = text;
-  ui.input.focus();
-  showToast("已放入输入框，可调整后重新发送");
+  resetWorkspaceState();
+  truncateThreadAt(target);
+  addHistory("user", text);
+  ui.input.value = "";
+  runMission(text);
 }
 
 function speakMessage(item) {
@@ -963,11 +1015,9 @@ function startLiveProgress() {
   ];
   state.liveTick = 0;
   setLiveStatus(phrases[0]);
-  updateWorkstream(phrases[0]);
   state.liveTimer = window.setInterval(() => {
     state.liveTick += 1;
     setLiveStatus(phrases[state.liveTick % phrases.length]);
-    updateWorkstream(phrases[state.liveTick % phrases.length]);
   }, 1600);
 }
 
@@ -1919,6 +1969,7 @@ function shortlistComparisonArtifact() {
           <button class="artifact-action primary" type="button" data-prompt="基于这次对比，生成两家企业的拜访提纲。">生成拜访提纲</button>
           <button class="artifact-action" type="button" data-prompt="把这次企业对比整理成领导汇报摘要。">生成汇报摘要</button>
           <button class="artifact-action" type="button" data-export-report="">下载 Word</button>
+          <button class="artifact-action" type="button" data-export-report="" data-format="pdf">下载 PDF</button>
         </div>
       </div>
       <div class="artifact-body compare-body">
@@ -2137,6 +2188,7 @@ function recommendationArtifact() {
           <button class="artifact-action primary" type="button" data-material="outline">生成拜访提纲</button>
           <button class="artifact-action" type="button" data-prompt="请展开说明这次推荐的筛选逻辑。">查看筛选逻辑</button>
           <button class="artifact-action" type="button" data-export-report="">下载 Word</button>
+          <button class="artifact-action" type="button" data-export-report="" data-format="pdf">下载 PDF</button>
         </div>
       </div>
       <div class="artifact-body">
@@ -2329,38 +2381,46 @@ function bindArtifactActions(root) {
   root.querySelectorAll("[data-export-report]").forEach((button) => {
     button.addEventListener("click", async () => {
       if (!state.report) return;
+      const fmt = button.dataset.format || "docx";
+      const label = fmt === "pdf" ? "下载 PDF" : "下载 Word";
       button.disabled = true;
       button.textContent = "导出中...";
       try {
         const companyName = (state.candidates[0]?.name || "企业").replace(/[\\/:*?"<>|]/g, "");
+        const ext = fmt === "pdf" ? "pdf" : "docx";
         await downloadFile("/api/export/report", {
           report: state.report,
           context: state.context || {},
-        }, `招商研判报告_${companyName}.docx`);
+          format: fmt,
+        }, `招商研判报告_${companyName}.${ext}`);
       } catch (err) {
         alert(err.message);
       } finally {
         button.disabled = false;
-        button.textContent = "下载 Word";
+        button.textContent = label;
       }
     });
   });
   root.querySelectorAll("[data-export-material]").forEach((button) => {
     button.addEventListener("click", async () => {
       if (!state.lastMaterial) return;
+      const fmt = button.dataset.format || "docx";
+      const label = fmt === "pdf" ? "下载 PDF" : "下载 Word";
       button.disabled = true;
       button.textContent = "导出中...";
       try {
         const title = (state.lastMaterial.title || "招商材料").replace(/[\\/:*?"<>|]/g, "");
+        const ext = fmt === "pdf" ? "pdf" : "docx";
         await downloadFile("/api/export/material", {
           material: state.lastMaterial,
           type: state.lastMaterial.type || "outline",
-        }, `${title}.docx`);
+          format: fmt,
+        }, `${title}.${ext}`);
       } catch (err) {
         alert(err.message);
       } finally {
         button.disabled = false;
-        button.textContent = "下载 Word";
+        button.textContent = label;
       }
     });
   });
@@ -2413,6 +2473,7 @@ async function generateMaterial(type, taskOverride = "", options = {}) {
             <button class="artifact-action" type="button" data-prompt="基于这份材料，帮我再压缩成领导汇报摘要。">生成汇报摘要</button>
             <button class="artifact-action" type="button" data-prompt="把这份材料改成更适合微信沟通的语气。">改成微信话术</button>
             <button class="artifact-action" type="button" data-export-material="">下载 Word</button>
+            <button class="artifact-action" type="button" data-export-material="" data-format="pdf">下载 PDF</button>
           </div>
         </div>
         <div class="artifact-body">
@@ -2485,13 +2546,11 @@ async function analyzeWithStream(task, signal) {
           setConversationMode(event.detail || event.label || "正在回复");
         } else {
           setLiveStatus(event.label || event.detail || "正在分析");
-          markActivity(event.label || event.id, event.detail || "", event.status || "done");
         }
       }
       if (event.event === "stage") {
         stopLiveProgress(false);
         setLiveStatus(event.label || event.detail || "正在分析");
-        markActivity(event.label || event.id, event.detail || "", event.status || "done");
       }
       if (event.event === "chunk") {
         stopLiveProgress(false);

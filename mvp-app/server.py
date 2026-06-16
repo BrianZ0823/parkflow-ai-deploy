@@ -1574,6 +1574,176 @@ def build_material_docx(material: dict[str, Any], material_type: str) -> bytes:
     return buf.getvalue()
 
 
+# Chinese font path for PDF generation
+_PDF_FONT_PATH = "C:/Windows/Fonts/msyh.ttc"
+
+
+def _build_pdf_base() -> Any:
+    from fpdf import FPDF
+
+    pdf = FPDF()
+    pdf.set_auto_page_break(True, 20)
+    pdf.add_font("CJK", "", _PDF_FONT_PATH, uni=True)
+    pdf.add_font("CJK", "B", "C:/Windows/Fonts/msyhbd.ttc", uni=True)
+    pdf.add_page()
+    return pdf
+
+
+def build_report_pdf(report: dict[str, Any], context: dict[str, Any]) -> bytes:
+    pdf = _build_pdf_base()
+
+    pdf.set_font("CJK", "B", 18)
+    pdf.cell(0, 12, "企业招商研判报告", align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(6)
+
+    verdict = _safe_text(report.get("verdict", ""))
+    summary = _safe_text(report.get("summary", ""))
+    metrics = report.get("metrics") or {}
+
+    pdf.set_font("CJK", "B", 14)
+    pdf.cell(0, 9, f"核心判断：{verdict}", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(3)
+    if summary:
+        pdf.set_font("CJK", "", 10)
+        pdf.multi_cell(0, 6, summary)
+        pdf.ln(3)
+
+    pdf.set_font("CJK", "B", 13)
+    pdf.cell(0, 9, "关键指标", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(2)
+    pdf.set_font("CJK", "", 10)
+    pdf.cell(60, 7, f"匹配度：{_safe_text(metrics.get('match_score', '-'))}")
+    pdf.cell(60, 7, f"风险等级：{_safe_text(metrics.get('risk_level', '-'))}")
+    pdf.cell(0, 7, f"建议动作：{_safe_text(metrics.get('recommended_action', '-'))}", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+
+    sections = report.get("sections") or []
+    for section in sections:
+        if not isinstance(section, dict):
+            continue
+        sec_title = _safe_text(section.get("title"))
+        if not sec_title:
+            continue
+        pdf.set_font("CJK", "B", 12)
+        pdf.cell(0, 8, sec_title, new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("CJK", "", 10)
+        body = _safe_text(section.get("body"))
+        if body:
+            pdf.multi_cell(0, 6, body)
+        bullets = section.get("bullets") or []
+        for bullet in bullets:
+            pdf.set_x(pdf.l_margin)
+            pdf.multi_cell(0, 6, f"  •  {_safe_text(bullet)}")
+        pdf.ln(2)
+
+    ranked = report.get("ranked_companies") or context.get("candidate_enterprises") or []
+    if ranked:
+        pdf.ln(2)
+        pdf.set_font("CJK", "B", 13)
+        pdf.cell(0, 9, "候选企业排名", new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(2)
+        pdf.set_font("CJK", "B", 9)
+        col_widths = [10, 40, 16, 80, 40]
+        headers = ["#", "企业", "匹配分", "推荐理由", "下一步"]
+        for i, h in enumerate(headers):
+            pdf.cell(col_widths[i], 7, h, border=1, align="C")
+        pdf.ln()
+        pdf.set_font("CJK", "", 9)
+        for idx, company in enumerate(ranked[:8]):
+            if not isinstance(company, dict):
+                continue
+            row = [
+                str(idx + 1),
+                _safe_text(company.get("name"))[:12],
+                str(company.get("score", "-")),
+                _safe_text(company.get("reason", ""))[:36],
+                _safe_text(company.get("next_step", ""))[:18],
+            ]
+            for i, val in enumerate(row):
+                pdf.cell(col_widths[i], 7, val, border=1, align="C" if i in (0, 2) else "L")
+            pdf.ln()
+
+    policy_matches = report.get("policy_matches") or []
+    if policy_matches:
+        pdf.ln(3)
+        pdf.set_font("CJK", "B", 12)
+        pdf.cell(0, 8, "政策匹配", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("CJK", "", 10)
+        for policy in policy_matches:
+            pdf.set_x(pdf.l_margin)
+            pdf.multi_cell(0, 6, f"  •  {_safe_text(policy)}")
+
+    action_plan = report.get("action_plan") or []
+    if action_plan:
+        pdf.ln(2)
+        pdf.set_font("CJK", "B", 12)
+        pdf.cell(0, 8, "推进计划", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("CJK", "", 10)
+        for idx, action in enumerate(action_plan, 1):
+            pdf.cell(0, 6, f"{idx}. {_safe_text(action)}", new_x="LMARGIN", new_y="NEXT")
+
+    evidence = context.get("evidence") or []
+    if evidence:
+        pdf.ln(3)
+        pdf.set_font("CJK", "B", 12)
+        pdf.cell(0, 8, "判断依据（资料引用）", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("CJK", "", 9)
+        for item in evidence:
+            if not isinstance(item, dict):
+                continue
+            src = f"{_safe_text(item.get('title'))} ({_safe_text(item.get('source'))})"
+            pdf.set_x(pdf.l_margin)
+            pdf.multi_cell(0, 5, f"  •  {src}")
+
+    pdf.ln(4)
+    pdf.set_font("CJK", "", 8)
+    pdf.cell(0, 6, "由 ParkFlow AI 生成，仅供参考，不作为唯一决策依据。", align="C", new_x="LMARGIN", new_y="NEXT")
+
+    return bytes(pdf.output())
+
+
+def build_material_pdf(material: dict[str, Any], material_type: str) -> bytes:
+    pdf = _build_pdf_base()
+
+    label = MATERIAL_LABELS.get(material_type, material_type or "招商材料")
+    title = _safe_text(material.get("title")) or label
+
+    pdf.set_font("CJK", "B", 18)
+    pdf.cell(0, 12, title, align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(8)
+
+    audience = _safe_text(material.get("audience"))
+    if audience:
+        pdf.set_font("CJK", "", 10)
+        pdf.cell(0, 7, f"对象：{audience}", new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(4)
+
+    content = material.get("content") or []
+    pdf.set_font("CJK", "", 11)
+    if isinstance(content, list):
+        for para in content:
+            pdf.multi_cell(0, 6.5, _safe_text(para))
+            pdf.ln(2)
+    else:
+        pdf.multi_cell(0, 6.5, _safe_text(content))
+
+    source_notes = material.get("source_notes") or []
+    if source_notes:
+        pdf.ln(3)
+        pdf.set_font("CJK", "B", 11)
+        pdf.cell(0, 7, "依据", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("CJK", "", 9)
+        for note in source_notes:
+            pdf.set_x(pdf.l_margin)
+            pdf.multi_cell(0, 5, f"  •  {_safe_text(note)}")
+
+    pdf.ln(4)
+    pdf.set_font("CJK", "", 8)
+    pdf.cell(0, 6, "由 ParkFlow AI 生成，可直接用于招商工作。", align="C", new_x="LMARGIN", new_y="NEXT")
+
+    return bytes(pdf.output())
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "ParkFlowMVP/0.2"
 
@@ -1952,48 +2122,63 @@ class Handler(BaseHTTPRequestHandler):
             body = self.read_body()
             report = body.get("report") or {}
             context = body.get("context") or {}
+            export_format = str(body.get("format") or "docx").strip().lower()
             if not report:
                 self.send_json({"ok": False, "error": "缺少报告数据"}, 400)
                 return
             try:
-                docx_bytes = build_report_docx(report, context)
+                if export_format == "pdf":
+                    out_bytes = build_report_pdf(report, context)
+                    mime = "application/pdf"
+                else:
+                    out_bytes = build_report_docx(report, context)
+                    mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             except Exception as exc:
                 self.send_json({"ok": False, "error": f"报告导出失败：{exc}"}, 500)
                 return
             company = _safe_text(context.get("company_name") or report.get("company_name", ""))
-            filename = urllib.parse.quote(f"招商研判报告_{company}.docx") if company else "招商研判报告.docx"
+            ext = "pdf" if export_format == "pdf" else "docx"
+            raw = f"招商研判报告_{company}.{ext}" if company else f"招商研判报告.{ext}"
+            filename = urllib.parse.quote(raw)
             self.send_response(200)
-            self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+            self.send_header("Content-Type", mime)
             self.send_header("Content-Disposition", f"attachment; filename*=UTF-8''{filename}")
-            self.send_header("Content-Length", str(len(docx_bytes)))
+            self.send_header("Content-Length", str(len(out_bytes)))
             self.send_header("Cache-Control", "no-store")
             self.send_cors_headers()
             self.end_headers()
-            self.wfile.write(docx_bytes)
+            self.wfile.write(out_bytes)
             return
 
         if self.path == "/api/export/material":
             body = self.read_body()
             material = body.get("material") or {}
             material_type = str(body.get("type") or "outline").strip()
+            export_format = str(body.get("format") or "docx").strip().lower()
             if not material:
                 self.send_json({"ok": False, "error": "缺少材料数据"}, 400)
                 return
             try:
-                docx_bytes = build_material_docx(material, material_type)
+                if export_format == "pdf":
+                    out_bytes = build_material_pdf(material, material_type)
+                    mime = "application/pdf"
+                else:
+                    out_bytes = build_material_docx(material, material_type)
+                    mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             except Exception as exc:
                 self.send_json({"ok": False, "error": f"材料导出失败：{exc}"}, 500)
                 return
             label = MATERIAL_LABELS.get(material_type, material_type or "招商材料")
-            filename = urllib.parse.quote(f"{label}.docx")
+            ext = "pdf" if export_format == "pdf" else "docx"
+            filename = urllib.parse.quote(f"{label}.{ext}")
             self.send_response(200)
-            self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+            self.send_header("Content-Type", mime)
             self.send_header("Content-Disposition", f"attachment; filename*=UTF-8''{filename}")
-            self.send_header("Content-Length", str(len(docx_bytes)))
+            self.send_header("Content-Length", str(len(out_bytes)))
             self.send_header("Cache-Control", "no-store")
             self.send_cors_headers()
             self.end_headers()
-            self.wfile.write(docx_bytes)
+            self.wfile.write(out_bytes)
             return
 
         self.send_json({"ok": False, "error": "未知接口"}, 404)
